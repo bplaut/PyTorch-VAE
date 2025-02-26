@@ -10,16 +10,14 @@ from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.utilities.seed import seed_everything
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
-from dataset import VAEDataset
+from dataset import VAEDataset, MyDataset
 from pytorch_lightning.plugins import DDPPlugin
 
 
 parser = argparse.ArgumentParser(description='Generic runner for VAE models')
-parser.add_argument('--config',  '-c',
-                    dest="filename",
-                    metavar='FILE',
-                    help =  'path to the config file',
-                    default='configs/vae.yaml')
+parser.add_argument('--config',  '-c',dest="filename", metavar='FILE'
+                    ,help =  'path to the config file',default='configs/vae.yaml')
+parser.add_argument('-d', '--dataset', type=str, help='Dataset to use')
 
 args = parser.parse_args()
 with open(args.filename, 'r') as file:
@@ -39,7 +37,7 @@ model = vae_models[config['model_params']['name']](**config['model_params'])
 experiment = VAEXperiment(model,
                           config['exp_params'])
 
-data = VAEDataset(**config["data_params"], pin_memory=len(config['trainer_params']['gpus']) != 0)
+data = VAEDataset(**config["data_params"], pin_memory=len(config['trainer_params']['gpus']) != 0, dataset=args.dataset)
 
 data.setup()
 runner = Trainer(logger=tb_logger,
