@@ -47,9 +47,9 @@ class OxfordPets(Dataset):
                  split: str,
                  transform: Callable,
                 **kwargs):
-        self.data_dir = Path(data_path) / "OxfordPets"        
+        self.train_data_dir = Path(data_path) / "OxfordPets"        
         self.transforms = transform
-        imgs = sorted([f for f in self.data_dir.iterdir() if f.suffix == '.jpg'])
+        imgs = sorted([f for f in self.train_data_dir.iterdir() if f.suffix == '.jpg'])
         
         self.imgs = imgs[:int(len(imgs) * 0.75)] if split == "train" else imgs[int(len(imgs) * 0.75):]
     
@@ -84,20 +84,26 @@ class VAEDataset(LightningDataModule):
         data_path: str,
         train_batch_size: int = 8,
         val_batch_size: int = 8,
+        test_batch_size: int = 8,
         patch_size: Union[int, Sequence[int]] = (256, 256),
         num_workers: int = 0,
         pin_memory: bool = False,
-        dataset = 'celeba',
+        train_dataset = 'celeba',
+        test_dataset = None,
         **kwargs,
     ):
         super().__init__()
 
-        self.data_dir = os.path.join(data_path, dataset)
+        self.train_data_dir = os.path.join(data_path, train_dataset)
+        self.test_data_dir = os.path.join(data_path, test_dataset) if test_dataset is not None else None
         self.train_batch_size = train_batch_size
         self.val_batch_size = val_batch_size
+        self.test_batch_size = test_batch_size
         self.patch_size = patch_size
         self.num_workers = num_workers
         self.pin_memory = pin_memory
+        self.train_dataset_name = train_dataset
+        self.test_dataset_name = test_dataset
 
     def setup(self, stage: Optional[str] = None) -> None:    
         train_transforms = transforms.Compose([transforms.RandomHorizontalFlip(),
@@ -110,8 +116,20 @@ class VAEDataset(LightningDataModule):
                                             transforms.Resize(self.patch_size),
                                             transforms.ToTensor(),])
         
-        self.train_dataset = MyDataset(self.data_dir, split='train', transform=train_transforms)
-        self.val_dataset = MyDataset(self.data_dir, split='test', transform=val_transforms)
+        test_transforms = transforms.Compose([transforms.CenterCrop(148),
+                                            transforms.Resize(self.patch_size),
+                                            transforms.ToTensor(),])
+        
+        self.train_dataset = MyDataset(self.train_data_dir, split='train', transform=train_transforms)
+        self.val_dataset = MyDataset(self.train_data_dir, split='test', transform=val_transforms)
+        
+        # If a separate test dataset is provided, use it; otherwise, use validation set
+        if self.test_data_dir is not None:
+            self.test_dataset = MyDataset(self.test_data_dir, split='test', transform=test_transforms, train_ratio=0)
+            print(f"Using separate test dataset: {self.test_dataset_name}")
+        else:
+            self.test_dataset = self.val_dataset
+            print("Using validation set as test dataset")
         
     def train_dataloader(self) -> DataLoader:
         return DataLoader(
@@ -133,10 +151,9 @@ class VAEDataset(LightningDataModule):
     
     def test_dataloader(self) -> Union[DataLoader, List[DataLoader]]:
         return DataLoader(
-            self.val_dataset,
-            batch_size=144,
+            self.test_dataset,
+            batch_size=self.test_batch_size,
             num_workers=self.num_workers,
-            shuffle=True,
+            shuffle=False,  # Don't shuffle for test to get consistent results
             pin_memory=self.pin_memory,
         )
-     
