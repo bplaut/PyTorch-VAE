@@ -59,10 +59,11 @@ data = VAEDataset(**config["data_params"],
 
 data.setup()
 
-# Create directories for samples and reconstructions
 Path(f"{tb_logger.log_dir}/Samples").mkdir(exist_ok=True, parents=True)
 Path(f"{tb_logger.log_dir}/Reconstructions").mkdir(exist_ok=True, parents=True)
-Path(f"{tb_logger.log_dir}/TestReconstructions").mkdir(exist_ok=True, parents=True)
+Path(f"{tb_logger.log_dir}/TestReconstructions/Originals").mkdir(exist_ok=True, parents=True)
+Path(f"{tb_logger.log_dir}/TestReconstructions/Reconstructions").mkdir(exist_ok=True, parents=True)
+Path(f"{tb_logger.log_dir}/TestReconstructions/Comparisons").mkdir(exist_ok=True, parents=True)
 
 runner = Trainer(logger=tb_logger,
                 callbacks=[
