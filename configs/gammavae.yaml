@@ -24,7 +24,7 @@ exp_params:
 
 trainer_params:
   gpus: [0]
-  max_epochs: 10
+  max_epochs: 200
   gradient_clip_val: 0.8
 
 logging_params:
