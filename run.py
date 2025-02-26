@@ -19,6 +19,7 @@ parser.add_argument('--config',  '-c',dest="filename", metavar='FILE'
                     ,help =  'path to the config file',default='configs/vae.yaml')
 parser.add_argument('-r', '--train_dataset', type=str, help='Dataset to use for training')
 parser.add_argument('-e', '--test_dataset', type=str, help='Dataset to use for testing')
+parser.add_argument('-d', '--latent_dim', type=str, help='Latent dimension of the model. If provided, it will override the value in the config file')
 
 args = parser.parse_args()
 with open(args.filename, 'r') as file:
@@ -27,6 +28,8 @@ with open(args.filename, 'r') as file:
     except yaml.YAMLError as exc:
         print(exc)
 
+if args.latent_dim is not None:
+    config['model_params']['latent_dim'] = int(args.latent_dim)
 
 tb_logger =  TensorBoardLogger(save_dir=config['logging_params']['save_dir'],
                                name=config['model_params']['name'],)
