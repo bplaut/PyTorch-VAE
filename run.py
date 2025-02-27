@@ -5,6 +5,7 @@ import numpy as np
 from pathlib import Path
 from models import *
 from experiment import VAEXperiment
+from make_tex import make_tex
 import torch.backends.cudnn as cudnn
 from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger
@@ -86,3 +87,5 @@ else:
 if args.test_dataset is not None:
     print(f"======= Testing {config['model_params']['name']} using checkpoint {args.trained_model_path} =======")
     runner.test(experiment, datamodule=data, ckpt_path=args.trained_model_path)
+    make_tex(args.test_output_dir, exp_name + '.tex')
+    
