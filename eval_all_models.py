@@ -75,9 +75,8 @@ def run_test(model_info, test_dataset, config_path, side_by_side_only=False):
     if side_by_side_only:
         cmd.append("--side_by_side_only")
     
-    print(f"\nTesting {model_info['model_type']} " +
-          f"(latent_dim={model_info['latent_dim']}, kl_penalty={model_info['kl_penalty']}) " +
-          f"trained on {model_info['train_dataset']} with test dataset {test_dataset}")
+
+    print("Running test command: " + " ".join(cmd))
     
     try:
         subprocess.run(cmd, check=True)
