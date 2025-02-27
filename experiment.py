@@ -78,7 +78,7 @@ class VAEXperiment(pl.LightningModule):
                           normalize=True,
                           nrow=12)
 
-        try:
+        if self.params['save_samples']:
             samples = self.model.sample(144,
                                        self.curr_device,
                                        labels=val_label)
@@ -88,8 +88,6 @@ class VAEXperiment(pl.LightningModule):
                                            f"{self.logger.name}_Epoch_{self.current_epoch}.png"),
                               normalize=True,
                               nrow=12)
-        except Exception as e:
-            print(f"Couldn't generate samples during training: {e}")
 
     def test_step(self, batch, batch_idx):
         real_img, labels = batch

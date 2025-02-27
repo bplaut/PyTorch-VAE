@@ -22,6 +22,7 @@ parser.add_argument('-e', '--test_dataset', type=str, help='Dataset to use for t
 parser.add_argument('-d', '--latent_dim', type=int, help='Latent dimension of the model. If provided, it will override the value in the config file')
 parser.add_argument('-p', '--trained_model_path', type=str, help='Path to the checkpoint to use for testing. If provided, training will be skipped')
 parser.add_argument('-k', '--kl_penalty', type=float, help='KL penalty to use for training. If provided, it will override the value in the config file')
+parser.add_argument('-s', '--save_samples', action='store_true', help='Save generated samples in addition to reconstructions', default=False)
 
 
 args = parser.parse_args()
@@ -31,6 +32,7 @@ with open(args.filename, 'r') as file:
     except yaml.YAMLError as exc:
         print(exc)
 
+config['exp_params']['save_samples'] = args.save_samples
 if args.latent_dim is not None:
     config['model_params']['latent_dim'] = args.latent_dim
 if args.kl_penalty is not None:
