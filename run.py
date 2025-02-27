@@ -91,3 +91,7 @@ if args.test_dataset is not None:
     test_output_dir = os.path.join(args.test_output_dir, exp_name) if args.side_by_side_only else os.path.join(args.test_output_dir, exp_name, 'side-by-side')
     make_tex(test_output_dir, exp_name + '.tex')
     
+
+# Cleanup
+if torch.distributed.is_initialized():
+    torch.distributed.destroy_process_group()
