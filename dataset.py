@@ -143,5 +143,4 @@ class VAEDataset(LightningDataModule):
             num_workers=self.num_workers,
             shuffle=False,  # Don't shuffle for test to get consistent results
             pin_memory=self.pin_memory,
-            drop_last=False,
         )
