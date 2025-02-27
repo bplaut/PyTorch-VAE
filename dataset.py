@@ -17,7 +17,7 @@ class MyDataset(Dataset):
         self.split = split
         
         # Adjust this to match your dataset structure
-        all_images = sorted([f for f in Path(data_dir).iterdir() if f.suffix in ['.jpg', '.png']])
+        all_images = sorted([f for f in Path(data_dir).iterdir() if f.suffix in ['.jpg', '.png']], key=lambda x: int(x.stem))
         
         # Split into train/test sets (adjust ratio as needed)
         if split == 'train':
@@ -143,4 +143,5 @@ class VAEDataset(LightningDataModule):
             num_workers=self.num_workers,
             shuffle=False,  # Don't shuffle for test to get consistent results
             pin_memory=self.pin_memory,
+            drop_last=False,
         )
