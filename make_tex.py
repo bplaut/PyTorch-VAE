@@ -76,7 +76,7 @@ def make_tex(directory_path, output_filename="presentation.tex"):
         frame = f"""
 \\begin{{frame}}
 \\begin{{center}}
-\\animategraphics[loop,controls,autoplay,width=2.7 in]{{\\fps}}{{{dir_name}/}}{{{start_idx}}}{{{end_idx}}}
+\\animategraphics[loop,controls,autoplay,height=2.1 in]{{\\fps}}{{{dir_name}/}}{{{start_idx}}}{{{end_idx}}}
 \\end{{center}}
 \\end{{frame}}
 """
