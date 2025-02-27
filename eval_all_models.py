@@ -15,6 +15,7 @@ def parse_args():
                         help='Path to the config file (default: configs/vae.yaml)')
     parser.add_argument('--checkpoint_name', type=str, default='last.ckpt',
                         help='Checkpoint filename to use (default: last.ckpt)')
+    parser.add_argument('--side_by_side_only', action='store_true',help='Only save side-by-side images', default=True)
     return parser.parse_args()
 
 def find_trained_models(logs_dir, checkpoint_name):
@@ -61,7 +62,7 @@ def find_trained_models(logs_dir, checkpoint_name):
             
     return trained_models
 
-def run_test(model_info, test_dataset, config_path):
+def run_test(model_info, test_dataset, config_path, side_by_side_only=True):
     cmd = [
         "python", "run.py",
         "--config", config_path,
@@ -70,6 +71,7 @@ def run_test(model_info, test_dataset, config_path):
         "--latent_dim", model_info['latent_dim'],
         "--kl_penalty", model_info['kl_penalty'],
         "--trained_model_path", model_info['checkpoint_path'],
+        "--side_by_side_only" if side_by_side_only else ""
     ]
     
     print(f"\nTesting {model_info['model_type']} " +
@@ -105,7 +107,8 @@ def main():
             success = run_test(
                 model_info=model,
                 test_dataset=test_dataset,
-                config_path=args.config
+                config_path=args.config,
+                side_by_side_only=args.side_by_side_only
             )
             
             results.append({
