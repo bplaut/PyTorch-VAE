@@ -18,11 +18,12 @@ parser = argparse.ArgumentParser(description='Generic runner for VAE models')
 parser.add_argument('--config',  '-c',dest="filename", metavar='FILE'
                     ,help =  'path to the config file',default='configs/vae.yaml')
 parser.add_argument('-r', '--train_dataset', type=str, help='Dataset to use for training')
-parser.add_argument('-e', '--test_dataset', type=str, help='Dataset to use for testing')
+parser.add_argument('-t', '--test_dataset', type=str, help='Dataset to use for testing')
 parser.add_argument('-d', '--latent_dim', type=int, help='Latent dimension of the model. If provided, it will override the value in the config file')
 parser.add_argument('-p', '--trained_model_path', type=str, help='Path to the checkpoint to use for testing. If provided, training will be skipped')
 parser.add_argument('-k', '--kl_penalty', type=float, help='KL penalty to use for training. If provided, it will override the value in the config file')
 parser.add_argument('-s', '--save_samples', action='store_true', help='Save generated samples in addition to reconstructions', default=False)
+parser.add_argument('-o', '--test_output_dir', type=str, help='Where to save the output images from test', default='test_outputs')
 
 
 args = parser.parse_args()
@@ -32,13 +33,13 @@ with open(args.filename, 'r') as file:
     except yaml.YAMLError as exc:
         print(exc)
 
+# Setup up parameters
 config['exp_params']['save_samples'] = args.save_samples
+config['exp_params']['test_output_dir'] = os.path.join(args.test_output_dir, exp_name)
 if args.latent_dim is not None:
     config['model_params']['latent_dim'] = args.latent_dim
 if args.kl_penalty is not None:
     config['exp_params']['kld_weight'] = args.kl_penalty
-
-# Update the experiment name to reflect both train and test datasets if provided
 exp_name = f"{config['logging_params']['name']}-{config['model_params']['latent_dim']}-kl_{config['exp_params']['kld_weight']}"
 if not args.trained_model_path is None:
     exp_name += f"-train_{args.train_dataset}"
@@ -63,11 +64,8 @@ data = VAEDataset(**config["data_params"],
 
 data.setup()
 
-Path(f"{tb_logger.log_dir}/Samples").mkdir(exist_ok=True, parents=True)
-Path(f"{tb_logger.log_dir}/Reconstructions").mkdir(exist_ok=True, parents=True)
-Path(f"{tb_logger.log_dir}/TestReconstructions/Originals").mkdir(exist_ok=True, parents=True)
-Path(f"{tb_logger.log_dir}/TestReconstructions/Reconstructions").mkdir(exist_ok=True, parents=True)
-Path(f"{tb_logger.log_dir}/TestReconstructions/Comparisons").mkdir(exist_ok=True, parents=True)
+Path(f"{tb_logger.log_dir}/samples").mkdir(exist_ok=True, parents=True)
+Path(f"{tb_logger.log_dir}/reconstructions").mkdir(exist_ok=True, parents=True)
 
 runner = Trainer(logger=tb_logger,
                 callbacks=[

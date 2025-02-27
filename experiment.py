@@ -73,7 +73,7 @@ class VAEXperiment(pl.LightningModule):
         recons = self.model.generate(val_input, labels=val_label)
         vutils.save_image(recons.data,
                           os.path.join(self.logger.log_dir, 
-                                       "Reconstructions", 
+                                       "reconstructions", 
                                        f"recons_{self.logger.name}_Epoch_{self.current_epoch}.png"),
                           normalize=True,
                           nrow=12)
@@ -84,7 +84,7 @@ class VAEXperiment(pl.LightningModule):
                                        labels=val_label)
             vutils.save_image(samples.cpu().data,
                               os.path.join(self.logger.log_dir, 
-                                           "Samples",      
+                                           "samples",      
                                            f"{self.logger.name}_Epoch_{self.current_epoch}.png"),
                               normalize=True,
                               nrow=12)
@@ -105,10 +105,9 @@ class VAEXperiment(pl.LightningModule):
         recons = results[0]  # Reconstructed images from model output
 
         # Create save directories if they don't exist
-        original_dir = os.path.join(self.logger.log_dir, "TestReconstructions", "Originals")
-        recon_dir = os.path.join(self.logger.log_dir, "TestReconstructions", "Reconstructions")
-        comparison_dir = os.path.join(self.logger.log_dir, "TestReconstructions", "Comparisons")
-
+        original_dir = os.path.join(self.params['test_output_dir'], "originals")
+        recon_dir = os.path.join(self.params['test_output_dir'], "reconstructions")
+        comparison_dir = os.path.join(self.params['test_output_dir'], "side-by-side")
         os.makedirs(original_dir, exist_ok=True)
         os.makedirs(recon_dir, exist_ok=True)
         os.makedirs(comparison_dir, exist_ok=True)
@@ -158,34 +157,35 @@ class VAEXperiment(pl.LightningModule):
         Function called at the end of test to generate summary statistics
         """
         print("Test completed!")
-        print(f"Individual original images saved to: {os.path.join(self.logger.log_dir, 'TestReconstructions', 'Originals')}")
-        print(f"Individual reconstructed images saved to: {os.path.join(self.logger.log_dir, 'TestReconstructions', 'Reconstructions')}")
-        print(f"Side-by-side comparisons saved to: {os.path.join(self.logger.log_dir, 'TestReconstructions', 'Comparisons')}")
+        print(f"Individual original images saved to: {os.path.join(self.params['test_output_dir'], 'originals')}")
+        print(f"Individual reconstructed images saved to: {os.path.join(self.params['test_output_dir'], 'reconstructions')}")
+        print(f"Side-by-side comparisons saved to: {os.path.join(self.params['test_output_dir'], 'side-by-side')}")
 
         # Generate random samples from the latent space
-        try:
-            test_data = next(iter(self.trainer.datamodule.test_dataloader()))
-            test_input, test_label = test_data
-            test_label = test_label.to(self.curr_device)
+        if self.params['save_samples']:
+            try:
+                test_data = next(iter(self.trainer.datamodule.test_dataloader()))
+                test_input, test_label = test_data
+                test_label = test_label.to(self.curr_device)
 
-            samples_dir = os.path.join(self.logger.log_dir, "TestReconstructions", "RandomSamples")
-            os.makedirs(samples_dir, exist_ok=True)
+                samples_dir = os.path.join(self.params['test_output_dir'], "samples")
+                os.makedirs(samples_dir, exist_ok=True)
 
-            # Generate samples
-            with torch.no_grad():
-                samples = self.model.sample(64, self.curr_device, labels=test_label)
+                # Generate samples
+                with torch.no_grad():
+                    samples = self.model.sample(64, self.curr_device, labels=test_label)
 
-            # Save individual samples
-            for i in range(samples.size(0)):
-                sample = samples[i].unsqueeze(0)  # Add batch dimension
-                vutils.save_image(sample.cpu().data,
-                                 os.path.join(samples_dir, f"sample_{i}.png"),
-                                 normalize=True)
+                # Save individual samples
+                for i in range(samples.size(0)):
+                    sample = samples[i].unsqueeze(0)  # Add batch dimension
+                    vutils.save_image(sample.cpu().data,
+                                     os.path.join(samples_dir, f"sample_{i}.png"),
+                                     normalize=True)
 
-            print(f"Random samples from latent space saved to: {samples_dir}")
+                print(f"Random samples from latent space saved to: {samples_dir}")
 
-        except Exception as e:
-            print(f"Could not generate random samples: {e}")
+            except Exception as e:
+                print(f"Could not generate random samples: {e}")
         
     def configure_optimizers(self):
 
