@@ -132,17 +132,17 @@ class VAEXperiment(pl.LightningModule):
             )
             if not self.params['side_by_side_only']:
                 vutils.save_image(original_resized.data,
-                                  os.path.join(original_dir, f"original_{img_idx}.png"),
+                                  os.path.join(original_dir, f"{img_idx}.png"),
                                   normalize=True)
                 vutils.save_image(reconstruction_resized.data,
-                                  os.path.join(recon_dir, f"recon_{img_idx}.png"),
+                                  os.path.join(recon_dir, f"{img_idx}.png"),
                                   normalize=True)
 
             # Concatenate horizontally (along width dimension)
             comparison = torch.cat([original_resized, reconstruction_resized], dim=3)
         
             vutils.save_image(comparison.data,
-                              os.path.join(comparison_dir, f"comparison_{img_idx}.png"),
+                              os.path.join(comparison_dir, f"{img_idx}.png"),
                               normalize=True)
 
         return test_loss
