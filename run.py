@@ -34,11 +34,11 @@ if args.latent_dim is not None:
     config['model_params']['latent_dim'] = args.latent_dim
 
 # Update the experiment name to reflect both train and test datasets if provided
-exp_name = f"{config['model_params']['name']}_{config['model_params']['latent_dim']}"
+exp_name = f"{config['model_params']['name']}-{config['model_params']['latent_dim']}"
 if not args.test_only:
-    exp_name += f"_train_{args.train_dataset}"
+    exp_name += f"-train_{args.train_dataset}"
 if args.test_dataset is not None:
-    exp_name += f"_test_{args.test_dataset}"
+    exp_name += f"-test_{args.test_dataset}"
 
 tb_logger = TensorBoardLogger(save_dir=config['logging_params']['save_dir'],
                               name=exp_name)
@@ -53,7 +53,7 @@ experiment = VAEXperiment(model,
 # Pass both train and test datasets to the data module
 data = VAEDataset(**config["data_params"], 
                  pin_memory=len(config['trainer_params']['gpus']) != 0, 
-                 dataset=args.train_dataset,
+                 train_dataset=args.train_dataset,
                  test_dataset=args.test_dataset,
                  test_batch_size=16)  # Adjust test batch size as needed
 
