@@ -24,6 +24,7 @@ parser.add_argument('-p', '--trained_model_path', type=str, help='Path to the ch
 parser.add_argument('-k', '--kl_penalty', type=float, help='KL penalty to use for training. If provided, it will override the value in the config file')
 parser.add_argument('-s', '--save_samples', action='store_true', help='Save generated samples in addition to reconstructions', default=False)
 parser.add_argument('-o', '--test_output_dir', type=str, help='Where to save the output images from test', default='test_outputs')
+parser.add_argument('--side_by_side_only', action='store_true', help='Only save side-by-side images in testing', default=True)
 
 
 args = parser.parse_args()
@@ -35,12 +36,13 @@ with open(args.filename, 'r') as file:
 
 # Setup up parameters
 config['exp_params']['save_samples'] = args.save_samples
+config['exp_params']['side_by_side_only'] = args.side_by_side_only
 if args.latent_dim is not None:
     config['model_params']['latent_dim'] = args.latent_dim
 if args.kl_penalty is not None:
     config['exp_params']['kld_weight'] = args.kl_penalty
 exp_name = f"{config['logging_params']['name']}-{config['model_params']['latent_dim']}-kl_{config['exp_params']['kld_weight']}"
-if not args.trained_model_path is None:
+if args.trained_model_path is None:
     exp_name += f"-train_{args.train_dataset}"
 if args.test_dataset is not None:
     exp_name += f"-test_{args.test_dataset}"

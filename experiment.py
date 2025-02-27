@@ -105,11 +105,12 @@ class VAEXperiment(pl.LightningModule):
         recons = results[0]
 
         # Create save directories if they don't exist
-        original_dir = os.path.join(self.params['test_output_dir'], "originals")
-        recon_dir = os.path.join(self.params['test_output_dir'], "reconstructions")
+        if not self.params['side_by_side_only']:
+            original_dir = os.path.join(self.params['test_output_dir'], "originals")
+            recon_dir = os.path.join(self.params['test_output_dir'], "reconstructions")
+            os.makedirs(original_dir, exist_ok=True)
+            os.makedirs(recon_dir, exist_ok=True)
         comparison_dir = os.path.join(self.params['test_output_dir'], "side-by-side")
-        os.makedirs(original_dir, exist_ok=True)
-        os.makedirs(recon_dir, exist_ok=True)
         os.makedirs(comparison_dir, exist_ok=True)
 
         for i in range(real_img.size(0)):
@@ -129,28 +130,13 @@ class VAEXperiment(pl.LightningModule):
                 mode='bilinear',
                 align_corners=False
             )
-            # Save reconstructed image
-            vutils.save_image(original_resized.data,
-                             os.path.join(original_dir, f"original_{img_idx}.png"),
-                             normalize=True)
-            vutils.save_image(reconstruction_resized.data,
-                             os.path.join(recon_dir, f"recon_{img_idx}.png"),
-                             normalize=True)
-
-            # Create side-by-side comparison
-            # Pad images if dimensions don't match perfectly (avoid potential errors)
-            max_height = max(original.size(2), reconstruction.size(2))
-            max_width = max(original.size(3), reconstruction.size(3))
-
-            padded_original = torch.nn.functional.pad(
-                original, 
-                (0, max(0, max_width - original.size(3)), 0, max(0, max_height - original.size(2)))
-            )
-
-            padded_recon = torch.nn.functional.pad(
-                reconstruction, 
-                (0, max(0, max_width - reconstruction.size(3)), 0, max(0, max_height - reconstruction.size(2)))
-            )
+            if not self.params['side_by_side_only']:
+                vutils.save_image(original_resized.data,
+                                  os.path.join(original_dir, f"original_{img_idx}.png"),
+                                  normalize=True)
+                vutils.save_image(reconstruction_resized.data,
+                                  os.path.join(recon_dir, f"recon_{img_idx}.png"),
+                                  normalize=True)
 
             # Concatenate horizontally (along width dimension)
             comparison = torch.cat([original_resized, reconstruction_resized], dim=3)
