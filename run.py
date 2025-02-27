@@ -80,13 +80,9 @@ if args.trained_model_path is None:
     # No model checkpoint provided, train the model
     print(f"======= Training {config['model_params']['name']} =======")
     runner.fit(experiment, datamodule=data)
-    
-    # After training, test the model on the test dataset if provided
-    if args.test_dataset is not None:
-        print(f"======= Testing {config['model_params']['name']} on {args.test_dataset} =======")
-        # Use the last checkpoint for testing
-        checkpoint_path = os.path.join(tb_logger.log_dir, "checkpoints", "last.ckpt")
-        runner.test(experiment, datamodule=data, ckpt_path=checkpoint_path)
+    checkpoint_path = os.path.join(tb_logger.log_dir, "checkpoints", "last.ckpt")
 else:
+    checkpoint_path = args.trained_model_path
+if args.test_dataset is not None:
     print(f"======= Testing {config['model_params']['name']} using checkpoint {args.trained_model_path} =======")
     runner.test(experiment, datamodule=data, ckpt_path=args.trained_model_path)
