@@ -76,7 +76,7 @@ def run_test(model_info, test_dataset, config_path, side_by_side_only=False):
         cmd.append("--side_by_side_only")
     
 
-    print("Running test command: " + " ".join(cmd))
+    print("================\nRunning test command: " + " ".join(cmd) + "\n================")
     
     try:
         subprocess.run(cmd, check=True)
