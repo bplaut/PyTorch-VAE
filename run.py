@@ -34,7 +34,7 @@ if args.latent_dim is not None:
     config['model_params']['latent_dim'] = args.latent_dim
 
 # Update the experiment name to reflect both train and test datasets if provided
-exp_name = f"{config['model_params']['name']}-{config['model_params']['latent_dim']}"
+exp_name = f"{config['logging_params']['name']}-{config['model_params']['latent_dim']}"
 if not args.test_only:
     exp_name += f"-train_{args.train_dataset}"
 if args.test_dataset is not None:
