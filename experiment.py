@@ -108,9 +108,11 @@ class VAEXperiment(pl.LightningModule):
         if not self.params['side_by_side_only']:
             original_dir = os.path.join(self.params['test_output_dir'], "originals")
             recon_dir = os.path.join(self.params['test_output_dir'], "reconstructions")
+            comparison_dir = os.path.join(self.params['test_output_dir'], "side-by-side")
             os.makedirs(original_dir, exist_ok=True)
             os.makedirs(recon_dir, exist_ok=True)
-        comparison_dir = os.path.join(self.params['test_output_dir'], "side-by-side")
+        else:
+            comparison_dir = self.params['test_output_dir']
         os.makedirs(comparison_dir, exist_ok=True)
 
         for i in range(real_img.size(0)):
