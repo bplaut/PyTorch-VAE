@@ -61,33 +61,35 @@ class VAEXperiment(pl.LightningModule):
     def on_validation_end(self) -> None:
         self.sample_images()
         
-    def sample_images(self):
-        # Get sample reconstruction image            
-        test_input, test_label = next(iter(self.trainer.datamodule.test_dataloader()))
-        test_input = test_input.to(self.curr_device)
-        test_label = test_label.to(self.curr_device)
+def sample_images(self):
+    """
+    Generate and save sample reconstructions and random samples during training
+    using the validation dataset, not the test dataset.
+    """
+    val_input, val_label = next(iter(self.trainer.datamodule.val_dataloader()))
+    val_input = val_input.to(self.curr_device)
+    val_label = val_label.to(self.curr_device)
 
-#         test_input, test_label = batch
-        recons = self.model.generate(test_input, labels = test_label)
-        vutils.save_image(recons.data,
-                          os.path.join(self.logger.log_dir , 
-                                       "Reconstructions", 
-                                       f"recons_{self.logger.name}_Epoch_{self.current_epoch}.png"),
+    recons = self.model.generate(val_input, labels=val_label)
+    vutils.save_image(recons.data,
+                      os.path.join(self.logger.log_dir, 
+                                   "Reconstructions", 
+                                   f"recons_{self.logger.name}_Epoch_{self.current_epoch}.png"),
+                      normalize=True,
+                      nrow=12)
+
+    try:
+        samples = self.model.sample(144,
+                                   self.curr_device,
+                                   labels=val_label)
+        vutils.save_image(samples.cpu().data,
+                          os.path.join(self.logger.log_dir, 
+                                       "Samples",      
+                                       f"{self.logger.name}_Epoch_{self.current_epoch}.png"),
                           normalize=True,
                           nrow=12)
-
-        try:
-            samples = self.model.sample(144,
-                                        self.curr_device,
-                                        labels = test_label)
-            vutils.save_image(samples.cpu().data,
-                              os.path.join(self.logger.log_dir , 
-                                           "Samples",      
-                                           f"{self.logger.name}_Epoch_{self.current_epoch}.png"),
-                              normalize=True,
-                              nrow=12)
-        except Warning:
-            pass
+    except Exception as e:
+        print(f"Couldn't generate samples during training: {e}")
 
     def test_step(self, batch, batch_idx):
         real_img, labels = batch
