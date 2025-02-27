@@ -25,7 +25,7 @@ parser.add_argument('-p', '--trained_model_path', type=str, help='Path to the ch
 parser.add_argument('-k', '--kl_penalty', type=float, help='KL penalty to use for training. If provided, it will override the value in the config file')
 parser.add_argument('-s', '--save_samples', action='store_true', help='Save generated samples in addition to reconstructions', default=False)
 parser.add_argument('-o', '--test_output_dir', type=str, help='Where to save the output images from test', default='test_outputs')
-parser.add_argument('--side_by_side_only', action='store_true', help='Only save side-by-side images in testing', default=True)
+parser.add_argument('--side_by_side_only', action='store_true', help='Only save side-by-side images in testing', default=False)
 
 
 args = parser.parse_args()
@@ -87,5 +87,6 @@ else:
 if args.test_dataset is not None:
     print(f"======= Testing {config['model_params']['name']} using checkpoint {args.trained_model_path} =======")
     runner.test(experiment, datamodule=data, ckpt_path=args.trained_model_path)
-    make_tex(args.test_output_dir, exp_name + '.tex')
+    # Make gifs of side-by-side images
+    make_tex(os.path.join(args.test_output_dir, exp_name, 'side-by-side'), exp_name + '.tex')
     
