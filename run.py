@@ -21,6 +21,7 @@ parser.add_argument('-r', '--train_dataset', type=str, help='Dataset to use for 
 parser.add_argument('-e', '--test_dataset', type=str, help='Dataset to use for testing')
 parser.add_argument('-d', '--latent_dim', type=int, help='Latent dimension of the model. If provided, it will override the value in the config file')
 parser.add_argument('-p', '--trained_model_path', type=str, help='Path to the checkpoint to use for testing. If provided, training will be skipped')
+parser.add_argument('-k', '--kl_penalty', type=float, help='KL penalty to use for training. If provided, it will override the value in the config file')
 
 
 args = parser.parse_args()
@@ -32,9 +33,11 @@ with open(args.filename, 'r') as file:
 
 if args.latent_dim is not None:
     config['model_params']['latent_dim'] = args.latent_dim
+if args.kl_penalty is not None:
+    config['exp_params']['kld_weight'] = args.kl_penalty
 
 # Update the experiment name to reflect both train and test datasets if provided
-exp_name = f"{config['logging_params']['name']}-{config['model_params']['latent_dim']}"
+exp_name = f"{config['logging_params']['name']}-{config['model_params']['latent_dim']}-kl_{config['exp_params']['kld_weight']}"
 if not args.trained_model_path is None:
     exp_name += f"-train_{args.train_dataset}"
 if args.test_dataset is not None:
@@ -47,8 +50,7 @@ tb_logger = TensorBoardLogger(save_dir=config['logging_params']['save_dir'],
 seed_everything(config['exp_params']['manual_seed'], True)
 
 model = vae_models[config['model_params']['name']](**config['model_params'])
-experiment = VAEXperiment(model,
-                         config['exp_params'])
+experiment = VAEXperiment(model,config['exp_params'])
 
 # Pass both train and test datasets to the data module
 data = VAEDataset(**config["data_params"], 
@@ -76,17 +78,18 @@ runner = Trainer(logger=tb_logger,
                 strategy=DDPPlugin(find_unused_parameters=False),
                 **config['trainer_params'])
 
-if args.trained_model_path is not None:
-    print(f"======= Testing {config['model_params']['name']} using checkpoint {args.trained_model_path} =======")
-    runner.test(experiment, datamodule=data, ckpt_path=args.trained_model_path)
 
-else:
+if args.trained_model_path is None:
+    # No model checkpoint provided, train the model
     print(f"======= Training {config['model_params']['name']} =======")
     runner.fit(experiment, datamodule=data)
     
     # After training, test the model on the test dataset if provided
-    if args.test_dataset:
+    if args.test_dataset is not None:
         print(f"======= Testing {config['model_params']['name']} on {args.test_dataset} =======")
         # Use the last checkpoint for testing
         checkpoint_path = os.path.join(tb_logger.log_dir, "checkpoints", "last.ckpt")
         runner.test(experiment, datamodule=data, ckpt_path=checkpoint_path)
+else:
+    print(f"======= Testing {config['model_params']['name']} using checkpoint {args.trained_model_path} =======")
+    runner.test(experiment, datamodule=data, ckpt_path=args.trained_model_path)
