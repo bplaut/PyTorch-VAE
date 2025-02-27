@@ -7,15 +7,15 @@ import re
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Test all trained VAE models on specified datasets')
-    parser.add_argument('--test_datasets', nargs='+', required=True,
+    parser.add_argument('-t', '--test_datasets', nargs='+', required=True,
                         help='List of test datasets to evaluate models on')
-    parser.add_argument('--logs_dir', type=str, default='logs',
+    parser.add_argument('-l', '--logs_dir', type=str, default='logs',
                         help='Directory containing model logs (default: logs)')
-    parser.add_argument('--config', type=str, default='configs/vae.yaml',
+    parser.add_argument('-c', '--config', type=str, default='configs/vae.yaml',
                         help='Path to the config file (default: configs/vae.yaml)')
-    parser.add_argument('--checkpoint_name', type=str, default='last.ckpt',
+    parser.add_argument('-n', '--checkpoint_name', type=str, default='last.ckpt',
                         help='Checkpoint filename to use (default: last.ckpt)')
-    parser.add_argument('--side_by_side_only', action='store_true',help='Only save side-by-side images', default=False)
+    parser.add_argument('-s', '--side_by_side_only', action='store_true',help='Only save side-by-side images', default=False)
     return parser.parse_args()
 
 def find_trained_models(logs_dir, checkpoint_name):
@@ -71,8 +71,9 @@ def run_test(model_info, test_dataset, config_path, side_by_side_only=False):
         "--latent_dim", model_info['latent_dim'],
         "--kl_penalty", model_info['kl_penalty'],
         "--trained_model_path", model_info['checkpoint_path'],
-        "--side_by_side_only" if side_by_side_only else ""
     ]
+    if side_by_side_only:
+        cmd.append("--side_by_side_only")
     
     print(f"\nTesting {model_info['model_type']} " +
           f"(latent_dim={model_info['latent_dim']}, kl_penalty={model_info['kl_penalty']}) " +
