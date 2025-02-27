@@ -35,7 +35,6 @@ with open(args.filename, 'r') as file:
 
 # Setup up parameters
 config['exp_params']['save_samples'] = args.save_samples
-config['exp_params']['test_output_dir'] = os.path.join(args.test_output_dir, exp_name)
 if args.latent_dim is not None:
     config['model_params']['latent_dim'] = args.latent_dim
 if args.kl_penalty is not None:
@@ -45,27 +44,23 @@ if not args.trained_model_path is None:
     exp_name += f"-train_{args.train_dataset}"
 if args.test_dataset is not None:
     exp_name += f"-test_{args.test_dataset}"
+config['exp_params']['test_output_dir'] = os.path.join(args.test_output_dir, exp_name)
 
+# Set up main stuff
 tb_logger = TensorBoardLogger(save_dir=config['logging_params']['save_dir'],
                               name=exp_name)
+Path(f"{tb_logger.log_dir}/samples").mkdir(exist_ok=True, parents=True)
+Path(f"{tb_logger.log_dir}/reconstructions").mkdir(exist_ok=True, parents=True)
 
-# For reproducibility
 seed_everything(config['exp_params']['manual_seed'], True)
-
 model = vae_models[config['model_params']['name']](**config['model_params'])
 experiment = VAEXperiment(model,config['exp_params'])
-
-# Pass both train and test datasets to the data module
 data = VAEDataset(**config["data_params"], 
                  pin_memory=len(config['trainer_params']['gpus']) != 0, 
                  train_dataset=args.train_dataset,
                  test_dataset=args.test_dataset,
                  test_batch_size=16)  # Adjust test batch size as needed
-
 data.setup()
-
-Path(f"{tb_logger.log_dir}/samples").mkdir(exist_ok=True, parents=True)
-Path(f"{tb_logger.log_dir}/reconstructions").mkdir(exist_ok=True, parents=True)
 
 runner = Trainer(logger=tb_logger,
                 callbacks=[
