@@ -10,6 +10,7 @@ def make_tex(directory_path, output_filename="presentation.tex"):
         directory_path (str): Path to the directory containing the annotated images
         output_filename (str): Name of the output LaTeX file
     """
+    print(f"Generating LaTeX file from images in {directory_path}")
     # Put the output file in the parent directory of the images
     if directory_path.endswith("/"):
         directory_path = directory_path[:-1]
@@ -20,7 +21,7 @@ def make_tex(directory_path, output_filename="presentation.tex"):
     num_images = len(image_files)
     
     if num_images == 0:
-        print(f"No annotated images found in {directory_path}")
+        print(f"No images found in {directory_path}")
         return
     
     # Find the highest image number to ensure we don't exceed it
