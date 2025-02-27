@@ -23,6 +23,7 @@ class VAEXperiment(pl.LightningModule):
         self.params = params
         self.curr_device = None
         self.hold_graph = False
+        self.test_output_size = (256,256)
         try:
             self.hold_graph = self.params['retain_first_backpass']
         except:
@@ -101,8 +102,7 @@ class VAEXperiment(pl.LightningModule):
 
         self.log_dict({f"test_{key}": val.item() for key, val in test_loss.items()}, sync_dist=True)
 
-        # Process each image individually
-        recons = results[0]  # Reconstructed images from model output
+        recons = results[0]
 
         # Create save directories if they don't exist
         original_dir = os.path.join(self.params['test_output_dir'], "originals")
@@ -112,19 +112,28 @@ class VAEXperiment(pl.LightningModule):
         os.makedirs(recon_dir, exist_ok=True)
         os.makedirs(comparison_dir, exist_ok=True)
 
-        # Save each image individually
         for i in range(real_img.size(0)):
             img_idx = batch_idx * real_img.size(0) + i
 
-            # Save original image
-            original = real_img[i].unsqueeze(0)  # Add batch dimension
-            vutils.save_image(original.data,
+            original = real_img[i].unsqueeze(0)
+            original_resized = torch.nn.functional.interpolate(
+                original, 
+                size=self.test_output_size, 
+                mode='bilinear',
+                align_corners=False
+            )
+            reconstruction = recons[i].unsqueeze(0)
+            reconstruction_resized = torch.nn.functional.interpolate(
+                reconstruction, 
+                size=self.test_output_size, 
+                mode='bilinear',
+                align_corners=False
+            )
+            # Save reconstructed image
+            vutils.save_image(original_resized.data,
                              os.path.join(original_dir, f"original_{img_idx}.png"),
                              normalize=True)
-
-            # Save reconstructed image
-            reconstruction = recons[i].unsqueeze(0)  # Add batch dimension
-            vutils.save_image(reconstruction.data,
+            vutils.save_image(reconstruction_resized.data,
                              os.path.join(recon_dir, f"recon_{img_idx}.png"),
                              normalize=True)
 
@@ -144,11 +153,11 @@ class VAEXperiment(pl.LightningModule):
             )
 
             # Concatenate horizontally (along width dimension)
-            comparison = torch.cat([padded_original, padded_recon], dim=3)
-
+            comparison = torch.cat([original_resized, reconstruction_resized], dim=3)
+        
             vutils.save_image(comparison.data,
-                             os.path.join(comparison_dir, f"comparison_{img_idx}.png"),
-                             normalize=True)
+                              os.path.join(comparison_dir, f"comparison_{img_idx}.png"),
+                              normalize=True)
 
         return test_loss
 
@@ -177,8 +186,14 @@ class VAEXperiment(pl.LightningModule):
 
                 # Save individual samples
                 for i in range(samples.size(0)):
-                    sample = samples[i].unsqueeze(0)  # Add batch dimension
-                    vutils.save_image(sample.cpu().data,
+                    sample = samples[i].unsqueeze(0)
+                    sample_resized = torch.nn.functional.interpolate(
+                        sample, 
+                        size=self.test_output_size, 
+                        mode='bilinear',
+                        align_corners=False
+                    )
+                    vutils.save_image(sample_resized.cpu().data,
                                      os.path.join(samples_dir, f"sample_{i}.png"),
                                      normalize=True)
 
