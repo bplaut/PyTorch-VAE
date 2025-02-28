@@ -157,9 +157,11 @@ class VAEXperiment(pl.LightningModule):
         Function called at the end of test to generate summary statistics
         """
         print("Test completed!")
-        print(f"Individual original images saved to: {os.path.join(self.params['test_output_dir'], 'originals')}")
-        print(f"Individual reconstructed images saved to: {os.path.join(self.params['test_output_dir'], 'reconstructions')}")
         print(f"Side-by-side comparisons saved to: {os.path.join(self.params['test_output_dir'], 'side-by-side')}")
+        if not self.params['side_by_side_only']:
+            print(f"Individual original images saved to: {os.path.join(self.params['test_output_dir'], 'originals')}")
+            print(f"Individual reconstructed images saved to: {os.path.join(self.params['test_output_dir'], 'reconstructions')}")
+
 
         # Generate random samples from the latent space
         if self.params['save_samples']:
