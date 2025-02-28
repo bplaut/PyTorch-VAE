@@ -90,6 +90,8 @@ if args.test_dataset is not None:
     # Make gifs of side-by-side images
     test_output_dir = os.path.join(args.test_output_dir, exp_name) if args.side_by_side_only else os.path.join(args.test_output_dir, exp_name, 'side-by-side')
     make_tex(test_output_dir, exp_name + '.tex')
+    # Run tectonic to compile the tex file
+    os.system(f"tectonic {os.path.join(args.test_output_dir, exp_name)}.tex --reruns 1")
     
 
 # Cleanup
