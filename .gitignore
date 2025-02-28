@@ -1,5 +1,10 @@
 *~
 *.zip
+*.aux
+*.out
+*.log
+*.gz
+*.nav
 Data/
 logs/
 
