@@ -65,7 +65,8 @@ def find_trained_models(logs_dir, checkpoint_name):
 def run_test(model_info, test_dataset, config_dir, side_by_side_only=False):
     config_map = {'VanillaVAE':'vae.yaml',
                   'MIWAE':'miwae.yaml',
-                  'DFCVAE':'dfc_vae.yaml',}
+                  'DFCVAE':'dfc_vae.yaml',
+                  'MSSIMVAE':'mssim_vae.yaml',}
     cmd = [
         "python", "run.py",
         "--config", os.path.join(config_dir, config_map[model_info['model_type']]),
