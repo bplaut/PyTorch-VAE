@@ -24,6 +24,7 @@ class VAEXperiment(pl.LightningModule):
         self.curr_device = None
         self.hold_graph = False
         self.test_output_size = (256,256)
+        self.logged_size_adjustment = False
         try:
             self.hold_graph = self.params['retain_first_backpass']
         except:
@@ -72,6 +73,10 @@ class VAEXperiment(pl.LightningModule):
         val_label = val_label.to(self.curr_device)
 
         recons = self.model.generate(val_input, labels=val_label)
+        if len(recons.shape) > 4:
+            print(f"Detected non-standard reconstruction shape (expected for MIWAE): {recons.shape}. Using first sample.")
+            recons = recons[0]
+
         vutils.save_image(recons.data,
                           os.path.join(self.logger.log_dir, 
                                        "reconstructions", 
@@ -99,11 +104,10 @@ class VAEXperiment(pl.LightningModule):
                                            M_N=1.0,
                                            optimizer_idx=0,
                                            batch_idx=batch_idx)
-
         self.log_dict({f"test_{key}": val.item() for key, val in test_loss.items()}, sync_dist=True)
-
         recons = results[0]
-
+        recons = self.ensure_4_dims(recons)
+    
         # Create save directories if they don't exist
         if not self.params['side_by_side_only']:
             original_dir = os.path.join(self.params['test_output_dir'], "originals")
@@ -117,15 +121,14 @@ class VAEXperiment(pl.LightningModule):
 
         for i in range(real_img.size(0)):
             img_idx = batch_idx * real_img.size(0) + i
-
-            original = real_img[i].unsqueeze(0)
+            original = real_img[i:i+1]
+            reconstruction = recons[i:i+1]
             original_resized = torch.nn.functional.interpolate(
                 original, 
                 size=self.test_output_size, 
                 mode='bilinear',
                 align_corners=False
             )
-            reconstruction = recons[i].unsqueeze(0)
             reconstruction_resized = torch.nn.functional.interpolate(
                 reconstruction, 
                 size=self.test_output_size, 
@@ -168,13 +171,14 @@ class VAEXperiment(pl.LightningModule):
                 samples_dir = os.path.join(self.params['test_output_dir'], "samples")
                 os.makedirs(samples_dir, exist_ok=True)
 
-                # Generate samples
                 with torch.no_grad():
                     samples = self.model.sample(64, self.curr_device, labels=test_label)
 
-                # Save individual samples
+                print(f"Generated samples shape: {samples.shape}")
+                samples = self.ensure_4_dims(samples)
+
                 for i in range(samples.size(0)):
-                    sample = samples[i].unsqueeze(0)
+                    sample = samples[i:i+1]
                     sample_resized = torch.nn.functional.interpolate(
                         sample, 
                         size=self.test_output_size, 
@@ -224,3 +228,20 @@ class VAEXperiment(pl.LightningModule):
                 return optims, scheds
         except:
             return optims
+
+    def ensure_4_dims(self, t):
+        if len(t.shape) != 4:
+            if not self.logged_size_adjustment:
+                print(f"\nDetected non-standard tensor shape (expected for MIWAE): {t.shape}.")
+            # For MIWAE, shape could be [B, _, S, C, H, W] where S is number of samples
+            # We want to extract [B, C, H, W] by taking the first sample (index 0 of the samples dimension)
+            if len(t.shape) == 6:  # [B, _, S, C, H, W]
+                t = t[:, 0, 0]  # Take first element of dimensions 1 and 2
+            elif len(t.shape) == 5:  # [B, S, C, H, W]
+                t = t[:, 0]  # Take first sample
+            elif len(t.shape) == 3:
+                t = t.unsqueeze(0)
+            if not self.logged_size_adjustment:
+                print(f"Adjusted tensor shape to: {t.shape}")
+            self.logged_size_adjustment = True
+        return t
