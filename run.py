@@ -85,7 +85,7 @@ if args.trained_model_path is None:
 else:
     checkpoint_path = args.trained_model_path
 if args.test_dataset is not None:
-    print(f"----\nTesting {config['model_params']['name']} using checkpoint {args.trained_model_path}\n----")
+    print(f"----\nTesting {config['model_params']['name']} on {args.test_dataset}\n----")
     runner.test(experiment, datamodule=data, ckpt_path=args.trained_model_path)
     # Make gifs of side-by-side images
     test_output_dir = os.path.join(args.test_output_dir, exp_name) if args.side_by_side_only else os.path.join(args.test_output_dir, exp_name, 'side-by-side')
