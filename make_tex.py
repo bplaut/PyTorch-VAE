@@ -36,18 +36,7 @@ def make_tex(directory_path, output_filename="presentation.tex"):
     # Create the LaTeX preamble
     preamble = r"""\documentclass[pdf]{beamer}
 \usepackage[utf8]{inputenc}
-\usepackage{gensymb}
-\usepackage{amsmath,amsfonts}
 \usepackage{graphicx}
-\usepackage{pgfplots}
-\usepackage{tikz}
-\usepackage{mathtools}
-\usepackage{amsthm}
-\usepackage{nccmath}
-\usepackage[percent]{overpic}
-\usepackage{rotating}
-\usepackage{array, booktabs}
-\usepackage{centernot}
 \usepackage{animate}
 \usepackage[absolute,overlay]{textpos}
 \mode<presentation>{}
