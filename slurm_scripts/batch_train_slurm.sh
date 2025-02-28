@@ -59,7 +59,6 @@ for latent_dim in "${latent_dims[@]}"; do
         
         if [ $? -eq 0 ]; then
             echo "Successfully submitted job $job_id"
-            echo "$job_id: train_dataset=$train_dataset, latent_dim=$latent_dim, kl_penalty=$kl_penalty, config=$config" >> "$LOG_DIR/submitted_jobs.log"
         else
             echo "Failed to submit job"
         fi
