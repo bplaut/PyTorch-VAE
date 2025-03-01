@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=vae
 #SBATCH --gpus=1
-#SBATCH --time=18:00:00
+#SBATCH --time=3-00:00:00
 #SBATCH --output=output_from_slurm/%j.out
 
 cd /nas/ucb/bplaut/PyTorch-VAE
