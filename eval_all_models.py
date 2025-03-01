@@ -15,6 +15,7 @@ def parse_args():
     parser.add_argument('-n', '--checkpoint_name', type=str, default='last.ckpt',
                         help='Checkpoint filename to use (default: last.ckpt)')
     parser.add_argument('-s', '--side_by_side_only', action='store_true',help='Only save side-by-side images', default=False)
+    parser.add_argument('-o', '--output_dir', type=str, default='test_outputs', help='Directory to save test outputs')
     return parser.parse_args()
 
 def find_trained_models(logs_dir, checkpoint_name):
@@ -61,7 +62,7 @@ def find_trained_models(logs_dir, checkpoint_name):
             
     return trained_models
 
-def run_test(model_info, test_dataset, config_dir, side_by_side_only=False):
+def run_test(model_info, test_dataset, config_dir, side_by_side_only=False, output_dir='test_outputs'):
     config_map = {'VanillaVAE':'vae.yaml',
                   'MIWAE':'miwae.yaml',
                   'DFCVAE':'dfc_vae.yaml',
@@ -74,6 +75,7 @@ def run_test(model_info, test_dataset, config_dir, side_by_side_only=False):
         "--latent_dim", model_info['latent_dim'],
         "--kl_penalty", model_info['kl_penalty'],
         "--trained_model_path", model_info['checkpoint_path'],
+        "--test_output_dir", output_dir,
     ]
     if side_by_side_only:
         cmd.append("--side_by_side_only")
@@ -111,7 +113,8 @@ def main():
                 model_info=model,
                 test_dataset=test_dataset,
                 config_dir=args.config_dir,
-                side_by_side_only=args.side_by_side_only
+                side_by_side_only=args.side_by_side_only,
+                output_dir=args.output_dir
             )
             
             results.append({
@@ -129,6 +132,11 @@ def main():
         print(f"{result['model_type']} (latent_dim={result['latent_dim']}, kl_penalty={result['kl_penalty']}) " +
               f"trained on {result['train_dataset']}, " +
               f"tested on {result['test_dataset']}: {status}")
+    print("Now copying the tex pdf outputs...")
+    gif_dir = "output_gifs"
+    os.makedirs(gif_dir, exist_ok=True)
+    os.system(f"cp {args.output_dir}/*.pdf {gif_dir}")
+    os.system(f"zip -r output_gifs.zip {gif_dir}")
 
 if __name__ == "__main__":
     main()
