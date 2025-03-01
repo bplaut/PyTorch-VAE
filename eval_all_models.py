@@ -62,7 +62,7 @@ def find_trained_models(logs_dir, checkpoint_name):
             
     return trained_models
 
-def run_test(model_info, test_dataset, config_dir, side_by_side_only=False, output_dir='test_outputs'):
+def run_test(model_info, test_dataset, config_dir, side_by_side_only=False, output_dir='test_outputs', idx=None, total=None):
     config_map = {'VanillaVAE':'vae.yaml',
                   'MIWAE':'miwae.yaml',
                   'DFCVAE':'dfc_vae.yaml',
@@ -81,7 +81,7 @@ def run_test(model_info, test_dataset, config_dir, side_by_side_only=False, outp
         cmd.append("--side_by_side_only")
     
 
-    print("================\nRunning test command: " + " ".join(cmd) + "\n================")
+    print(f"================\nRunning test command {idx}/{total}: " + " ".join(cmd) + "\n================")
     
     try:
         subprocess.run(cmd, check=True)
@@ -107,6 +107,7 @@ def main():
         print(f"   Checkpoint: {model['checkpoint_path']}")
     
     results = []
+    idx = 0
     for model in trained_models:
         for test_dataset in args.test_datasets:
             success = run_test(
@@ -114,8 +115,11 @@ def main():
                 test_dataset=test_dataset,
                 config_dir=args.config_dir,
                 side_by_side_only=args.side_by_side_only,
-                output_dir=args.output_dir
+                output_dir=args.output_dir,
+                idx=idx,
+                total=len(trained_models) * len(args.test_datasets)
             )
+            idx += 1
             
             results.append({
                 'model_type': model['model_type'],
