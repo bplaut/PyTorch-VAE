@@ -8,8 +8,8 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Test all trained VAE models on specified datasets')
     parser.add_argument('-t', '--test_datasets', nargs='+', required=True,
                         help='List of test datasets to evaluate models on')
-    parser.add_argument('-l', '--logs_dir', type=str, default='logs',
-                        help='Directory containing model logs (default: logs)')
+    parser.add_argument('-m', '--models_dir', type=str, default='trained_models',
+                        help='Path to the directory containing trained models (default: trained_models)')
     parser.add_argument('-c', '--config_dir', type=str, default='configs',
                         help='Path to the config directory (default: configs)')
     parser.add_argument('-n', '--checkpoint_name', type=str, default='last.ckpt',
@@ -18,11 +18,11 @@ def parse_args():
     parser.add_argument('-o', '--output_dir', type=str, default='test_outputs', help='Directory to save test outputs')
     return parser.parse_args()
 
-def find_trained_models(logs_dir, checkpoint_name):
+def find_trained_models(models_dir, checkpoint_name):
     trained_models = []
     
-    # Look directly in logs_dir for model directories
-    for model_dir in Path(logs_dir).iterdir():
+    # Look directly in models_dir for model directories
+    for model_dir in Path(models_dir).iterdir():
         if not model_dir.is_dir():
             continue
             
@@ -81,7 +81,7 @@ def run_test(model_info, test_dataset, config_dir, side_by_side_only=False, outp
         cmd.append("--side_by_side_only")
     
 
-    print(f"================\nRunning test command {idx}/{total}: " + " ".join(cmd) + "\n================")
+    print(f"================\nRUNNING TEST COMMAND {idx+1}/{total}: " + " ".join(cmd) + "\n================")
     
     try:
         subprocess.run(cmd, check=True)
@@ -94,8 +94,8 @@ def run_test(model_info, test_dataset, config_dir, side_by_side_only=False, outp
 def main():
     args = parse_args()
     
-    print(f"Searching for trained models in {args.logs_dir}...")
-    trained_models = find_trained_models(args.logs_dir, args.checkpoint_name)
+    print(f"Searching for trained models in {args.models_dir}...")
+    trained_models = find_trained_models(args.models_dir, args.checkpoint_name)
     
     if not trained_models:
         print("No trained models found in the logs directory.")
