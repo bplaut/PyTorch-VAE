@@ -63,7 +63,7 @@ def main():
             processed += 1
             
             # Progress update every 1000 images
-            if processed % 1000 == 0:
+            if processed % 10000 == 0:
                 elapsed = time.time() - start_time
                 images_per_second = processed / elapsed
                 print(f"Processed {processed}/{len(image_files)} images ({images_per_second:.2f} images/sec)")
