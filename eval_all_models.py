@@ -140,6 +140,8 @@ def main():
     print("Now copying the tex pdf outputs...")
     gif_dir = "output_gifs"
     os.makedirs(gif_dir, exist_ok=True)
+    os.system(f"rm {gif_dir}/*.pdf")
+    os.system(f"rm output_gifs.zip")
     os.system(f"cp {args.output_dir}/*.pdf {gif_dir}")
     os.system(f"zip -r output_gifs.zip {gif_dir}")
 
