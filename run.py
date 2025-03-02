@@ -36,6 +36,11 @@ with open(args.filename, 'r') as file:
     except yaml.YAMLError as exc:
         print(exc)
 
+# print args:
+print("Arguments:")
+for arg in vars(args):
+    print(f"\t{arg}: {getattr(args, arg)}")
+
 # Setup up parameters
 if args.train_dataset is None and args.test_dataset is None:
     raise ValueError("At least one of train_dataset and test_dataset must be provided")
