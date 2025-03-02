@@ -143,7 +143,7 @@ class VAEXperiment(pl.LightningModule):
             # Get loss values
             total_loss = single_loss['loss'].item()
             recon_loss = single_loss['Reconstruction_Loss'].item()
-            kl_loss = abs(single_loss['KLD'].item())
+            kl_loss = abs(single_loss['KLD'].item()) * self.params['kld_weight'] # For some reason, the loss function doesn't multiply KLD by the weight (but it doesn't when computing total loss)
 
             # Update global min/max values
             self.loss_stats['total_loss']['min'] = min(self.loss_stats['total_loss']['min'], total_loss)
