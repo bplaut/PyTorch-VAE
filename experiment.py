@@ -10,6 +10,8 @@ from torchvision import transforms
 import torchvision.utils as vutils
 from torchvision.datasets import CelebA
 from torch.utils.data import DataLoader
+import numpy as np
+from PIL import Image, ImageDraw, ImageFont
 
 
 class VAEXperiment(pl.LightningModule):
@@ -99,16 +101,90 @@ class VAEXperiment(pl.LightningModule):
         real_img, labels = batch
         self.curr_device = real_img.device
 
+        # Initialize data storage if not already done
+        if not hasattr(self, 'test_data'):
+            self.test_data = []
+            self.loss_stats = {
+                'total_loss': {'min': float('inf'), 'max': float('-inf')},
+                'recon_loss': {'min': float('inf'), 'max': float('-inf')},
+                'kl_loss': {'min': float('inf'), 'max': float('-inf')}
+            }
+            print("Starting image collection for visualization...")
+
+        # Get batch results for logging
         results = self.forward(real_img, labels=labels)
         test_loss = self.model.loss_function(*results,
-                                           M_N=1.0,
-                                           optimizer_idx=0,
-                                           batch_idx=batch_idx)
+                                            M_N=1.0,
+                                            optimizer_idx=0,
+                                            batch_idx=batch_idx)
+
+        # Log batch metrics
         self.log_dict({f"test_{key}": val.item() for key, val in test_loss.items()}, sync_dist=True)
-        recons = results[0]
-        recons = self.ensure_4_dims(recons)
-    
-        # Create save directories if they don't exist
+
+        # Process each image and collect data
+        for i in range(real_img.size(0)):
+            img_idx = batch_idx * real_img.size(0) + i
+
+            # Get individual image
+            single_img = real_img[i:i+1]
+            single_label = labels[i:i+1] if labels is not None else None
+
+            # Forward pass for single image
+            single_results = self.forward(single_img, labels=single_label)
+            single_loss = self.model.loss_function(*single_results,
+                                               M_N=1.0,
+                                               optimizer_idx=0,
+                                               batch_idx=batch_idx)
+
+            # Get reconstructed image
+            recons = single_results[0]
+            recons = self.ensure_4_dims(recons)
+
+            # Get loss values
+            total_loss = single_loss['loss'].item()
+            recon_loss = single_loss['Reconstruction_Loss'].item()
+            kl_loss = abs(single_loss['KLD'].item())
+
+            # Update global min/max values
+            self.loss_stats['total_loss']['min'] = min(self.loss_stats['total_loss']['min'], total_loss)
+            self.loss_stats['total_loss']['max'] = max(self.loss_stats['total_loss']['max'], total_loss)
+            self.loss_stats['recon_loss']['min'] = min(self.loss_stats['recon_loss']['min'], recon_loss)
+            self.loss_stats['recon_loss']['max'] = max(self.loss_stats['recon_loss']['max'], recon_loss)
+            self.loss_stats['kl_loss']['min'] = min(self.loss_stats['kl_loss']['min'], kl_loss)
+            self.loss_stats['kl_loss']['max'] = max(self.loss_stats['kl_loss']['max'], kl_loss)
+
+            # Resize images
+            original_resized = torch.nn.functional.interpolate(
+                single_img, size=self.test_output_size, mode='bilinear', align_corners=False
+            )
+            reconstruction_resized = torch.nn.functional.interpolate(
+                recons, size=self.test_output_size, mode='bilinear', align_corners=False
+            )
+
+            # Store data for processing
+            self.test_data.append({
+                'img_idx': img_idx,
+                'original': original_resized.cpu(),
+                'reconstruction': reconstruction_resized.cpu(),
+                'total_loss': total_loss,
+                'recon_loss': recon_loss,
+                'kl_loss': kl_loss
+            })
+
+        return test_loss
+
+    def on_test_epoch_end(self):
+        """
+        Function called at the end of test epoch to save all images
+        """
+        # If test_data doesn't exist yet, we're not at the right stage
+        if not hasattr(self, 'test_data'):
+            print("Not at the right stage to process test images.")
+            return
+
+        print("Test completed! Processing images...")
+
+        # Create directories for output
         if not self.params['side_by_side_only']:
             original_dir = os.path.join(self.params['test_output_dir'], "originals")
             recon_dir = os.path.join(self.params['test_output_dir'], "reconstructions")
@@ -119,83 +195,172 @@ class VAEXperiment(pl.LightningModule):
             comparison_dir = self.params['test_output_dir']
         os.makedirs(comparison_dir, exist_ok=True)
 
-        for i in range(real_img.size(0)):
-            img_idx = batch_idx * real_img.size(0) + i
-            original = real_img[i:i+1]
-            reconstruction = recons[i:i+1]
-            original_resized = torch.nn.functional.interpolate(
-                original, 
-                size=self.test_output_size, 
-                mode='bilinear',
-                align_corners=False
-            )
-            reconstruction_resized = torch.nn.functional.interpolate(
-                reconstruction, 
-                size=self.test_output_size, 
-                mode='bilinear',
-                align_corners=False
-            )
+        # Print normalization ranges
+        print(f"Loss normalization ranges:")
+        print(f"  Total Loss: {self.loss_stats['total_loss']['min']:.4f} to {self.loss_stats['total_loss']['max']:.4f}")
+        print(f"  Recon Loss: {self.loss_stats['recon_loss']['min']:.4f} to {self.loss_stats['recon_loss']['max']:.4f}")
+        print(f"  KL Loss: {self.loss_stats['kl_loss']['min']:.4f} to {self.loss_stats['kl_loss']['max']:.4f}")
+
+        # Process all collected data with consistent normalization
+        for data in self.test_data:
+            img_idx = data['img_idx']
+            original = data['original']
+            reconstruction = data['reconstruction']
+            total_loss = data['total_loss']
+            recon_loss = data['recon_loss']
+            kl_loss = data['kl_loss']
+
+            # Save individual images if needed
             if not self.params['side_by_side_only']:
-                vutils.save_image(original_resized.data,
+                vutils.save_image(original.data,
                                   os.path.join(original_dir, f"{img_idx}.png"),
                                   normalize=True)
-                vutils.save_image(reconstruction_resized.data,
+                vutils.save_image(reconstruction.data,
                                   os.path.join(recon_dir, f"{img_idx}.png"),
                                   normalize=True)
 
-            # Concatenate horizontally (along width dimension)
-            comparison = torch.cat([original_resized, reconstruction_resized], dim=3)
-        
-            vutils.save_image(comparison.data,
-                              os.path.join(comparison_dir, f"{img_idx}.png"),
-                              normalize=True)
+            # Create side-by-side comparison
+            comparison = torch.cat([original, reconstruction], dim=3)
 
-        return test_loss
+            # Convert to PIL for annotation
+            comparison_np = comparison.numpy()
+            comparison_np = np.transpose(comparison_np[0], (1, 2, 0))
+            comparison_np = (comparison_np - comparison_np.min()) / (comparison_np.max() - comparison_np.min()) * 255.0
+            comparison_pil = Image.fromarray(comparison_np.astype(np.uint8))
 
-    def on_test_end(self):
-        """
-        Function called at the end of test to generate summary statistics
-        """
-        print("Test completed!")
-        print(f"Side-by-side comparisons saved to: {os.path.join(self.params['test_output_dir'], 'side-by-side')}")
+            # Normalize values using global min/max
+            total_norm = self.normalize_loss(total_loss, 'total_loss')
+            recon_norm = self.normalize_loss(recon_loss, 'recon_loss')
+            kl_norm = self.normalize_loss(kl_loss, 'kl_loss')
+
+            # Create annotated image with consistent normalization
+            annotated_img = self.create_annotated_image(
+                comparison_pil, 
+                total_loss, total_norm,
+                recon_loss, recon_norm, 
+                kl_loss, kl_norm
+            )
+
+            # Save the annotated image
+            annotated_img.save(os.path.join(comparison_dir, f"{img_idx}.png"))
+
+        print(f"Saved {len(self.test_data)} annotated images.")
+        print(f"Side-by-side comparisons saved to: {comparison_dir}")
         if not self.params['side_by_side_only']:
-            print(f"Individual original images saved to: {os.path.join(self.params['test_output_dir'], 'originals')}")
-            print(f"Individual reconstructed images saved to: {os.path.join(self.params['test_output_dir'], 'reconstructions')}")
+            print(f"Individual original images saved to: {original_dir}")
+            print(f"Individual reconstructed images saved to: {recon_dir}")
 
+        # Generate random samples if requested
+        if self.params.get('save_samples', False):
+            self.generate_random_samples()
 
-        # Generate random samples from the latent space
-        if self.params['save_samples']:
+        # Clean up stored data
+        delattr(self, 'test_data')
+        delattr(self, 'loss_stats')
+
+    def generate_random_samples(self):
+        """
+        Generate random samples from the latent space
+        """
+        try:
+            test_data = next(iter(self.trainer.datamodule.test_dataloader()))
+            test_input, test_label = test_data
+            test_label = test_label.to(self.curr_device)
+
+            samples_dir = os.path.join(self.params['test_output_dir'], "samples")
+            os.makedirs(samples_dir, exist_ok=True)
+
+            with torch.no_grad():
+                samples = self.model.sample(64, self.curr_device, labels=test_label)
+
+            samples = self.ensure_4_dims(samples)
+
+            for i in range(samples.size(0)):
+                sample = samples[i:i+1]
+                sample_resized = torch.nn.functional.interpolate(
+                    sample, size=self.test_output_size, mode='bilinear', align_corners=False
+                )
+                vutils.save_image(sample_resized.cpu().data,
+                                  os.path.join(samples_dir, f"sample_{i}.png"),
+                                  normalize=True)
+
+            print(f"Random samples from latent space saved to: {samples_dir}")
+
+        except Exception as e:
+            print(f"Could not generate random samples: {e}")
+
+    def create_annotated_image(self, comparison_img, total_loss, total_norm, recon_loss, recon_norm, kl_loss, kl_norm):
+        img_width, img_height = comparison_img.size
+        header_height = 40
+
+        new_img = Image.new('RGB', (img_width, img_height + header_height), color=(240, 240, 240))
+        new_img.paste(comparison_img, (0, header_height))
+
+        draw = ImageDraw.Draw(new_img)
+
+        try:
+            font = ImageFont.truetype("arial.ttf", 14)
+        except IOError:
             try:
-                test_data = next(iter(self.trainer.datamodule.test_dataloader()))
-                test_input, test_label = test_data
-                test_label = test_label.to(self.curr_device)
+                font = ImageFont.truetype("DejaVuSans.ttf", 14)
+            except:
+                font = ImageFont.load_default()
 
-                samples_dir = os.path.join(self.params['test_output_dir'], "samples")
-                os.makedirs(samples_dir, exist_ok=True)
+        metrics = [
+            {"name": "Total", "value": total_loss, "norm": total_norm, "x": 10},
+            {"name": "Recon", "value": recon_loss, "norm": recon_norm, "x": img_width // 3},
+            {"name": "KL", "value": kl_loss, "norm": kl_norm, "x": 2 * img_width // 3}
+        ]
 
-                with torch.no_grad():
-                    samples = self.model.sample(64, self.curr_device, labels=test_label)
+        for metric in metrics:
+            x = metric["x"]
+            color = self.get_color_from_score(metric["norm"])
 
-                print(f"Generated samples shape: {samples.shape}")
-                samples = self.ensure_4_dims(samples)
+            # Display normalized value (0-1)
+            text = f"{metric['name']}: {metric['norm']:.3f}"
+            draw.text((x, 4), text, fill=color, font=font)
 
-                for i in range(samples.size(0)):
-                    sample = samples[i:i+1]
-                    sample_resized = torch.nn.functional.interpolate(
-                        sample, 
-                        size=self.test_output_size, 
-                        mode='bilinear',
-                        align_corners=False
-                    )
-                    vutils.save_image(sample_resized.cpu().data,
-                                     os.path.join(samples_dir, f"sample_{i}.png"),
-                                     normalize=True)
+            meter_width = img_width // 4
+            meter_height = 10
+            meter_y = header_height - meter_height - 4
 
-                print(f"Random samples from latent space saved to: {samples_dir}")
+            # Background
+            draw.rectangle(
+                [(x, meter_y), (x + meter_width, meter_y + meter_height)],
+                fill=(220, 220, 220), outline=(180, 180, 180)
+            )
 
-            except Exception as e:
-                print(f"Could not generate random samples: {e}")
-        
+            # Filled part
+            filled_width = int(meter_width * metric["norm"])
+            if filled_width > 0:
+                draw.rectangle(
+                    [(x, meter_y), (x + filled_width, meter_y + meter_height)],
+                    fill=color
+                )
+
+        return new_img
+
+    def normalize_loss(self, loss_value, loss_type):
+        min_val = self.loss_stats[loss_type]['min']
+        max_val = self.loss_stats[loss_type]['max']
+
+        if max_val == min_val:
+            return 0.5
+
+        return max(0.0, min(1.0, (loss_value - min_val) / (max_val - min_val)))
+
+    def get_color_from_score(self, score):
+        if score < 0.5:
+            r = int(128 * (score * 2))
+            g = 0
+            b = 255
+        else:
+            r = int(128 + 127 * (score - 0.5) * 2)
+            g = 0
+            b = int(255 * (1 - (score - 0.5) * 2))
+
+        return (r, g, b)
+
     def configure_optimizers(self):
 
         optims = []
