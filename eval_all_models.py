@@ -43,7 +43,8 @@ def find_trained_models(models_dir, checkpoint_name):
             print(f"No version subdirectory found for model: {model_dir}")
             continue
             
-        version_dir = version_dirs[0]  # Take the first version directory
+        # Take the most recent version
+        version_dir = sorted(version_dirs)[-1]
         
         # Check for checkpoint
         checkpoint_path = version_dir / "checkpoints" / checkpoint_name
