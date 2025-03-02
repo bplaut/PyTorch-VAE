@@ -68,7 +68,7 @@ class VAEDataset(LightningDataModule):
     ):
         super().__init__()
 
-        self.train_data_dir = os.path.join(data_path, train_dataset)
+        self.train_data_dir = os.path.join(data_path, train_dataset) if train_dataset is not None else None
         self.test_data_dir = os.path.join(data_path, test_dataset) if test_dataset is not None else None
         self.train_batch_size = train_batch_size
         self.val_batch_size = val_batch_size
@@ -82,12 +82,15 @@ class VAEDataset(LightningDataModule):
     def setup(self, stage: Optional[str] = None) -> None:    
         transform = transforms.Compose([transforms.Resize(self.patch_size),
                                               transforms.ToTensor(),])
-        
-        self.train_dataset = MyDataset(self.train_data_dir, split='train', transform=transform)
-        self.val_dataset = MyDataset(self.train_data_dir, split='test', transform=transform)
+
+        if self.train_dataset_name is not None:
+            self.train_dataset = MyDataset(self.train_data_dir, split='train', transform=transform)
+            self.val_dataset = MyDataset(self.train_data_dir, split='test', transform=transform)
+        else:
+            self.train_dataset, self.val_dataset = None, None
         
         # If a separate test dataset is provided, use it; otherwise, use validation set
-        if self.test_data_dir is not None:
+        if self.test_dataset_name is not None:
             self.test_dataset = MyDataset(self.test_data_dir, split='test', transform=transform, train_ratio=0)
         else:
             self.test_dataset = self.val_dataset

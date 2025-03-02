@@ -71,7 +71,6 @@ def run_test(model_info, test_dataset, config_dir, side_by_side_only=False, outp
     cmd = [
         "python", "run.py",
         "--config", os.path.join(config_dir, config_map[model_info['model_type']]),
-        "--train_dataset", model_info['train_dataset'],
         "--test_dataset", test_dataset,
         "--latent_dim", model_info['latent_dim'],
         "--kl_penalty", model_info['kl_penalty'],
