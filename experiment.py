@@ -177,11 +177,6 @@ class VAEXperiment(pl.LightningModule):
         """
         Function called at the end of test epoch to save all images
         """
-        # If test_data doesn't exist yet, we're not at the right stage
-        if not hasattr(self, 'test_data'):
-            print("Not at the right stage to process test images.")
-            return
-
         print("Test completed! Processing images...")
 
         # Create directories for output
