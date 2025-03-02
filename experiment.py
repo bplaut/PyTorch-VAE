@@ -228,16 +228,18 @@ class VAEXperiment(pl.LightningModule):
             recon_norm = self.normalize_loss(recon_loss, 'recon_loss')
             kl_norm = self.normalize_loss(kl_loss, 'kl_loss')
 
-            # Create annotated image with consistent normalization
-            annotated_img = self.create_annotated_image(
-                comparison_pil, 
-                total_loss, total_norm,
-                recon_loss, recon_norm, 
-                kl_loss, kl_norm
+            # Create the final image
+            if self.params['annotate_loss']:
+                final_img = self.create_annotated_image(
+                    comparison_pil, 
+                    total_loss, total_norm,
+                    recon_loss, recon_norm, 
+                    kl_loss, kl_norm
             )
+            else:
+                final_img = comparison_pil
 
-            # Save the annotated image
-            annotated_img.save(os.path.join(comparison_dir, f"{img_idx}.png"))
+            final_img.save(os.path.join(comparison_dir, f"{img_idx}.png"))
 
         print(f"Saved {len(self.test_data)} annotated images.")
         print(f"Side-by-side comparisons saved to: {comparison_dir}")

@@ -16,6 +16,7 @@ def parse_args():
                         help='Checkpoint filename to use (default: last.ckpt)')
     parser.add_argument('-s', '--side_by_side_only', action='store_true',help='Only save side-by-side images', default=False)
     parser.add_argument('-o', '--output_dir', type=str, default='test_outputs', help='Directory to save test outputs')
+    parser.add_argument('-a', '--annotate_loss', action='store_true', help='Annotate the output images with the loss', default=False)
     return parser.parse_args()
 
 def find_trained_models(models_dir, checkpoint_name):
@@ -63,22 +64,24 @@ def find_trained_models(models_dir, checkpoint_name):
             
     return trained_models
 
-def run_test(model_info, test_dataset, config_dir, side_by_side_only=False, output_dir='test_outputs', idx=None, total=None):
+def run_test(model_info, args, test_dataset, idx=None, total=None):
     config_map = {'VanillaVAE':'vae.yaml',
                   'MIWAE':'miwae.yaml',
                   'DFCVAE':'dfc_vae.yaml',
                   'MSSIMVAE':'mssim_vae.yaml',}
     cmd = [
         "python", "run.py",
-        "--config", os.path.join(config_dir, config_map[model_info['model_type']]),
+        "--config", os.path.join(args.config_dir, config_map[model_info['model_type']]),
         "--test_dataset", test_dataset,
         "--latent_dim", model_info['latent_dim'],
         "--kl_penalty", model_info['kl_penalty'],
         "--trained_model_path", model_info['checkpoint_path'],
-        "--test_output_dir", output_dir,
+        "--test_output_dir", args.output_dir,
     ]
-    if side_by_side_only:
+    if args.side_by_side_only:
         cmd.append("--side_by_side_only")
+    if args.annotate_loss:
+        cmd.append("--annotate_loss")
     
 
     print(f"================\nRUNNING TEST COMMAND {idx+1}/{total}: " + " ".join(cmd) + "\n================")
@@ -110,15 +113,7 @@ def main():
     idx = 0
     for model in trained_models:
         for test_dataset in args.test_datasets:
-            success = run_test(
-                model_info=model,
-                test_dataset=test_dataset,
-                config_dir=args.config_dir,
-                side_by_side_only=args.side_by_side_only,
-                output_dir=args.output_dir,
-                idx=idx,
-                total=len(trained_models) * len(args.test_datasets)
-            )
+            success = run_test(model_info=model, args=args, test_dataset=test_dataset, idx=idx, total=len(trained_models) * len(args.test_datasets))
             idx += 1
             
             results.append({
