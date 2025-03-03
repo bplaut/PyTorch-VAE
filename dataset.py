@@ -12,7 +12,7 @@ import zipfile
 
 # Add your custom dataset class here
 class MyDataset(Dataset):
-    def __init__(self, data_dir, transform=None, split='train', train_ratio=0.8):
+    def __init__(self, data_dir, transform=None, split='train', train_ratio=0.9):
         self.transform = transform
         self.split = split
         
