@@ -107,7 +107,7 @@ class VAEXperiment(pl.LightningModule):
             self.loss_stats = {
                 'total_loss': {'min': float('inf'), 'max': float('-inf')},
                 'recon_loss': {'min': float('inf'), 'max': float('-inf')},
-                'kl_loss': {'min': float('inf'), 'max': float('-inf')}
+                'feature_loss': {'min': float('inf'), 'max': float('-inf')}
             }
             print("Starting image collection for visualization...")
 
@@ -140,18 +140,21 @@ class VAEXperiment(pl.LightningModule):
             recons = single_results[0]
             recons = self.ensure_4_dims(recons)
 
-            # Get loss values
-            total_loss = single_loss['loss'].item()
-            recon_loss = single_loss['Reconstruction_Loss'].item()
-            kl_loss = abs(single_loss['KLD'].item()) * self.params['kld_weight'] # For some reason, the loss function doesn't multiply KLD by the weight (but it doesn't when computing total loss)
+            # Scale losses by 100 for readability
+            total_loss = single_loss['loss'].item() * 100
+            recon_loss = single_loss['Reconstruction_Loss'].item() * 100
+            if 'feature_loss' in single_loss:
+                feature_loss = single_loss['feature_loss'].item() * 100
+            else:
+                feature_loss = None
 
             # Update global min/max values
             self.loss_stats['total_loss']['min'] = min(self.loss_stats['total_loss']['min'], total_loss)
             self.loss_stats['total_loss']['max'] = max(self.loss_stats['total_loss']['max'], total_loss)
             self.loss_stats['recon_loss']['min'] = min(self.loss_stats['recon_loss']['min'], recon_loss)
             self.loss_stats['recon_loss']['max'] = max(self.loss_stats['recon_loss']['max'], recon_loss)
-            self.loss_stats['kl_loss']['min'] = min(self.loss_stats['kl_loss']['min'], kl_loss)
-            self.loss_stats['kl_loss']['max'] = max(self.loss_stats['kl_loss']['max'], kl_loss)
+            self.loss_stats['feature_loss']['min'] = min(self.loss_stats['feature_loss']['min'], feature_loss)
+            self.loss_stats['feature_loss']['max'] = max(self.loss_stats['feature_loss']['max'], feature_loss)
 
             # Resize images
             original_resized = torch.nn.functional.interpolate(
@@ -168,7 +171,7 @@ class VAEXperiment(pl.LightningModule):
                 'reconstruction': reconstruction_resized.cpu(),
                 'total_loss': total_loss,
                 'recon_loss': recon_loss,
-                'kl_loss': kl_loss
+                'feature_loss': feature_loss
             })
 
         return test_loss
@@ -194,7 +197,8 @@ class VAEXperiment(pl.LightningModule):
         print(f"Loss normalization ranges:")
         print(f"  Total Loss: {self.loss_stats['total_loss']['min']:.4f} to {self.loss_stats['total_loss']['max']:.4f}")
         print(f"  Recon Loss: {self.loss_stats['recon_loss']['min']:.4f} to {self.loss_stats['recon_loss']['max']:.4f}")
-        print(f"  KL Loss: {self.loss_stats['kl_loss']['min']:.4f} to {self.loss_stats['kl_loss']['max']:.4f}")
+        if self.loss_stats['feature_loss']['min'] is not None:
+            print(f"  Feature Loss: {self.loss_stats['feature_loss']['min']:.4f} to {self.loss_stats['feature_loss']['max']:.4f}")
 
         # Process all collected data with consistent normalization
         for data in self.test_data:
@@ -203,7 +207,7 @@ class VAEXperiment(pl.LightningModule):
             reconstruction = data['reconstruction']
             total_loss = data['total_loss']
             recon_loss = data['recon_loss']
-            kl_loss = data['kl_loss']
+            feature_loss = data['feature_loss']
 
             # Save individual images if needed
             if not self.params['side_by_side_only']:
@@ -224,17 +228,17 @@ class VAEXperiment(pl.LightningModule):
             comparison_pil = Image.fromarray(comparison_np.astype(np.uint8))
 
             # Normalize values using global min/max
-            total_norm = self.normalize_loss(total_loss, 'total_loss')
-            recon_norm = self.normalize_loss(recon_loss, 'recon_loss')
-            kl_norm = self.normalize_loss(kl_loss, 'kl_loss')
+            total_norm_loss = self.normalize_loss(total_loss, 'total_loss')
+            recon_norm_loss = self.normalize_loss(recon_loss, 'recon_loss')
+            feature_norm_loss = self.normalize_loss(feature_loss, 'feature_loss') if feature_loss is not None else None
 
             # Create the final image
             if self.params['annotate_loss']:
                 final_img = self.create_annotated_image(
                     comparison_pil, 
-                    total_loss, total_norm,
-                    recon_loss, recon_norm, 
-                    kl_loss, kl_norm
+                    total_loss, total_norm_loss,
+                    recon_loss, recon_norm_loss, 
+                    feature_loss, feature_norm_loss
             )
             else:
                 final_img = comparison_pil
@@ -286,7 +290,7 @@ class VAEXperiment(pl.LightningModule):
         except Exception as e:
             print(f"Could not generate random samples: {e}")
 
-    def create_annotated_image(self, comparison_img, total_loss, total_norm, recon_loss, recon_norm, kl_loss, kl_norm):
+    def create_annotated_image(self, comparison_img, total_loss, total_norm_loss, recon_loss, recon_norm_loss, feature_loss, feature_norm_loss):
         img_width, img_height = comparison_img.size
         header_height = 40
 
@@ -304,17 +308,19 @@ class VAEXperiment(pl.LightningModule):
                 font = ImageFont.load_default()
 
         metrics = [
-            {"name": "Total", "value": total_loss, "norm": total_norm, "x": 10},
-            {"name": "Recon", "value": recon_loss, "norm": recon_norm, "x": img_width // 3},
-            {"name": "KL", "value": kl_loss, "norm": kl_norm, "x": 2 * img_width // 3}
+            {"name": "Total", "value": total_loss, "norm": total_norm_loss, "x": 10},
+            {"name": "Recon", "value": recon_loss, "norm": recon_norm_loss, "x": img_width // 3},
+            {"name": "Feature", "value": feature_loss, "norm": feature_norm_loss, "x": 2 * img_width // 3}
         ]
 
         for metric in metrics:
+            if metric["value"] is None:
+                continue
             x = metric["x"]
             color = self.get_color_from_score(metric["norm"])
 
             # Display normalized value (0-1)
-            text = f"{metric['name']}: {metric['norm']:.3f}"
+            text = f"{metric['name']}: {metric['value']:.3f}"
             draw.text((x, 4), text, fill=color, font=font)
 
             meter_width = img_width // 4
