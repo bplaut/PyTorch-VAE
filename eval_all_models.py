@@ -68,6 +68,7 @@ def run_test(model_info, args, test_dataset, idx=None, total=None):
     config_map = {'VanillaVAE':'vae.yaml',
                   'MIWAE':'miwae.yaml',
                   'DFCVAE':'dfc_vae.yaml',
+                  'PureAE':'pure_ae.yaml',
                   'MSSIMVAE':'mssim_vae.yaml',}
     cmd = [
         "python", "run.py",
