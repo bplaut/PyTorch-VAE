@@ -193,9 +193,9 @@ class VAEXperiment(pl.LightningModule):
 
         return test_loss
 
-    def on_test_epoch_end(self):
+    def on_test_end(self):
         """
-        Function called at the end of test epoch to save all images
+        Function called at the end of test to save all images
         """
         print("Test completed! Processing images...")
 
