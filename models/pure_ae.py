@@ -22,7 +22,8 @@ class PureAE(BaseVAE):
 
         modules = []
         if hidden_dims is None:
-            hidden_dims = [32, 64, 128, 256, 512, 1024, 2048]
+            hidden_dims = [32, 64, 128, 256, 512]
+        print("Hidden dims: ", hidden_dims)
         self.last_dim = hidden_dims[-1]
         strides = [2, 2, 2, 2, 2] + [1] * (len(hidden_dims) - 5) # Five layers with stride 2, rest with stride 1
         output_padding = lambda stride: 1 if stride > 1 else 0
