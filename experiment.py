@@ -153,8 +153,9 @@ class VAEXperiment(pl.LightningModule):
             self.loss_stats['total_loss']['max'] = max(self.loss_stats['total_loss']['max'], total_loss)
             self.loss_stats['recon_loss']['min'] = min(self.loss_stats['recon_loss']['min'], recon_loss)
             self.loss_stats['recon_loss']['max'] = max(self.loss_stats['recon_loss']['max'], recon_loss)
-            self.loss_stats['feature_loss']['min'] = min(self.loss_stats['feature_loss']['min'], feature_loss)
-            self.loss_stats['feature_loss']['max'] = max(self.loss_stats['feature_loss']['max'], feature_loss)
+            if feature_loss is not None:
+                self.loss_stats['feature_loss']['min'] = min(self.loss_stats['feature_loss']['min'], feature_loss)
+                self.loss_stats['feature_loss']['max'] = max(self.loss_stats['feature_loss']['max'], feature_loss)
 
             # Resize images
             original_resized = torch.nn.functional.interpolate(
@@ -194,10 +195,10 @@ class VAEXperiment(pl.LightningModule):
         os.makedirs(comparison_dir, exist_ok=True)
 
         # Print normalization ranges
-        print(f"Loss normalization ranges:")
+        print(f"Loss ranges:")
         print(f"  Total Loss: {self.loss_stats['total_loss']['min']:.4f} to {self.loss_stats['total_loss']['max']:.4f}")
         print(f"  Recon Loss: {self.loss_stats['recon_loss']['min']:.4f} to {self.loss_stats['recon_loss']['max']:.4f}")
-        if self.loss_stats['feature_loss']['min'] is not None:
+        if self.test_data[0]['feature_loss'] is not None:
             print(f"  Feature Loss: {self.loss_stats['feature_loss']['min']:.4f} to {self.loss_stats['feature_loss']['max']:.4f}")
 
         # Process all collected data with consistent normalization
