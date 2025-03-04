@@ -6,6 +6,7 @@ from pathlib import Path
 from models import *
 from experiment import VAEXperiment
 from make_tex import make_tex
+from print_epoch_summary import EpochSummary
 import torch.backends.cudnn as cudnn
 from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger
@@ -27,7 +28,6 @@ parser.add_argument('-s', '--save_samples', action='store_true', help='Save gene
 parser.add_argument('-o', '--test_output_dir', type=str, help='Where to save the output images from test', default='test_outputs')
 parser.add_argument('--side_by_side_only', action='store_true', help='Only save side-by-side images in testing', default=False)
 parser.add_argument('-a', '--annotate_loss', action='store_true', help='Annotate the output images with the loss', default=False)
-
 
 args = parser.parse_args()
 with open(args.filename, 'r') as file:
@@ -81,6 +81,7 @@ runner = Trainer(logger=tb_logger,
                                    dirpath=os.path.join(tb_logger.log_dir, "checkpoints"), 
                                    monitor="val_loss",
                                    save_last=True),
+                    EpochSummary()
                 ],
                 strategy=DDPPlugin(find_unused_parameters=False),
                 **config['trainer_params'])
