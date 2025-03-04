@@ -22,27 +22,28 @@ class PureAE(BaseVAE):
 
         modules = []
         if hidden_dims is None:
-            hidden_dims = [32, 64, 128, 256, 512]
-
+            hidden_dims = [32, 64, 128, 256, 512, 1024, 2048]
+        self.last_dim = hidden_dims[-1]
+        strides = [2, 2, 2, 2, 2] + [1] * (len(hidden_dims) - 5) # Five layers with stride 2, rest with stride 1
+        output_padding = lambda stride: 1 if stride > 1 else 0
         # Build Encoder
-        for h_dim in hidden_dims:
+        for i, h_dim in enumerate(hidden_dims):
             modules.append(
                 nn.Sequential(
-                    nn.Conv2d(in_channels, out_channels=h_dim,
-                              kernel_size=3, stride=2, padding=1),
+                    nn.Conv2d(in_channels, out_channels=h_dim, kernel_size=3, stride=strides[i], padding=1),
                     nn.BatchNorm2d(h_dim),
                     nn.LeakyReLU())
             )
             in_channels = h_dim
 
         self.encoder = nn.Sequential(*modules)
-        # Direct mapping to latent space (no mu/var split as in VAE)
         self.fc = nn.Linear(hidden_dims[-1]*4, latent_dim)
 
         modules = []
         self.decoder_input = nn.Linear(latent_dim, hidden_dims[-1] * 4)
 
         hidden_dims.reverse()
+        strides.reverse()
 
         for i in range(len(hidden_dims) - 1):
             modules.append(
@@ -50,9 +51,9 @@ class PureAE(BaseVAE):
                     nn.ConvTranspose2d(hidden_dims[i],
                                        hidden_dims[i + 1],
                                        kernel_size=3,
-                                       stride=2,
+                                       stride=strides[i],
                                        padding=1,
-                                       output_padding=1),
+                                       output_padding=output_padding(strides[i])),
                     nn.BatchNorm2d(hidden_dims[i + 1]),
                     nn.LeakyReLU())
             )
@@ -96,7 +97,7 @@ class PureAE(BaseVAE):
         :return: (Tensor) [B x C x H x W]
         """
         result = self.decoder_input(z)
-        result = result.view(-1, 512, 2, 2)
+        result = result.view(-1, self.last_dim, 2, 2)
         result = self.decoder(result)
         result = self.final_layer(result)
         return result
