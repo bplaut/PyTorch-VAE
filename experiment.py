@@ -77,7 +77,7 @@ class VAEXperiment(pl.LightningModule):
         if 'val_loss' in metrics:
             print(f"Validation Loss: {metrics['val_loss']:.5f}")
         if self.params.get('adaptive_lr', False):
-            print(f"Current LR: {self.trainer.lr_schedulers[0]['scheduler'].optimizer.param_groups[0]['lr']:.5f}")
+            print(f"Current LR: {self.trainer.lr_schedulers[0]['scheduler'].optimizer.param_groups[0]['lr']:.7f}")
 
         print("-" * 50 + "\n")
 
