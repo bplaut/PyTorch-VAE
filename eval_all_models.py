@@ -4,6 +4,15 @@ import subprocess
 from pathlib import Path
 import re
 
+config_map = {'VanillaVAE':'vae.yaml',
+              'MIWAE':'miwae.yaml',
+              'DFCVAE':'dfc_vae.yaml',
+              'PureAE':'pure_ae.yaml',
+              'BigAE':'big_ae.yaml',
+              'AdaptiveAE':'adaptive_lr_ae.yaml',
+              'PatientAE':'patient_ae.yaml',
+              'MSSIMVAE':'mssim_vae.yaml'}
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Test all trained VAE models on specified datasets')
     parser.add_argument('-t', '--test_datasets', nargs='+', required=True,
@@ -65,13 +74,6 @@ def find_trained_models(models_dir, checkpoint_name):
     return trained_models
 
 def run_test(model_info, args, test_dataset, idx=None, total=None):
-    config_map = {'VanillaVAE':'vae.yaml',
-                  'MIWAE':'miwae.yaml',
-                  'DFCVAE':'dfc_vae.yaml',
-                  'PureAE':'pure_ae.yaml',
-                  'BigAE':'big_ae.yaml',
-                  'PatientAE':'patient_ae.yaml',
-                  'MSSIMVAE':'mssim_vae.yaml',}
     cmd = [
         "python", "run.py",
         "--config", os.path.join(args.config_dir, config_map[model_info['model_type']]),
