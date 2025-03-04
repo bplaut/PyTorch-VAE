@@ -6,7 +6,6 @@ from pathlib import Path
 from models import *
 from experiment import VAEXperiment
 from make_tex import make_tex
-from print_epoch_summary import EpochSummary
 import torch.backends.cudnn as cudnn
 from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger
@@ -81,7 +80,6 @@ runner = Trainer(logger=tb_logger,
                                    dirpath=os.path.join(tb_logger.log_dir, "checkpoints"), 
                                    monitor="val_loss",
                                    save_last=True),
-                    EpochSummary()
                 ],
                 strategy=DDPPlugin(find_unused_parameters=False),
                 **config['trainer_params'])

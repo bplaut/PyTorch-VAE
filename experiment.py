@@ -64,7 +64,21 @@ class VAEXperiment(pl.LightningModule):
         
     def on_validation_end(self) -> None:
         self.sample_images()
-        
+
+    def on_validation_epoch_end(self):
+        if self.trainer.sanity_checking:
+            return
+
+        metrics = self.trainer.callback_metrics
+        print("\n" + "-" * 50)
+        print(f"Epoch {self.current_epoch}:")
+        if 'loss' in metrics:
+            print(f"Training Loss: {metrics['loss']:.5f}")
+        if 'val_loss' in metrics:
+            print(f"Validation Loss: {metrics['val_loss']:.5f}")
+
+        print("-" * 50 + "\n")
+
     def sample_images(self):
         """
         Generate and save sample reconstructions and random samples during training
@@ -382,8 +396,7 @@ class VAEXperiment(pl.LightningModule):
                 optims.append(optimizer2)
         except:
             pass
-
-        if self.params.get('use_adaptive_lr', False):
+        if self.params.get('adaptive_lr', False):
             factor = self.params.get('lr_reduce_factor', 0.5)
             patience = self.params.get('lr_patience', 1)
             min_lr = self.params.get('min_lr', 1e-6)
@@ -394,7 +407,7 @@ class VAEXperiment(pl.LightningModule):
                 factor=factor,
                 patience=patience,
                 verbose=True,
-                threshold=0.0001,
+                threshold=0.01,
                 min_lr=min_lr
             )
 
@@ -402,7 +415,7 @@ class VAEXperiment(pl.LightningModule):
                 "optimizer": optimizer,
                 "lr_scheduler": {
                     "scheduler": scheduler,
-                    "monitor": "val_Reconstruction_Loss",
+                    "monitor": "val_loss",
                     "interval": "epoch",
                     "frequency": 1
                 }
