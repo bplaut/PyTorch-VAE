@@ -366,7 +366,6 @@ class VAEXperiment(pl.LightningModule):
         return (r, g, b)
 
     def configure_optimizers(self):
-
         optims = []
         scheds = []
 
@@ -374,6 +373,7 @@ class VAEXperiment(pl.LightningModule):
                                lr=self.params['LR'],
                                weight_decay=self.params['weight_decay'])
         optims.append(optimizer)
+
         # Check if more than 1 optimizer is required (Used for adversarial training)
         try:
             if self.params['LR_2'] is not None:
@@ -383,22 +383,47 @@ class VAEXperiment(pl.LightningModule):
         except:
             pass
 
-        try:
-            if self.params['scheduler_gamma'] is not None:
-                scheduler = optim.lr_scheduler.ExponentialLR(optims[0],
-                                                             gamma = self.params['scheduler_gamma'])
-                scheds.append({"scheduler": scheduler, "interval": "epoch"})
-                # Check if another scheduler is required for the second optimizer
-                try:
-                    if self.params['scheduler_gamma_2'] is not None:
-                        scheduler2 = optim.lr_scheduler.ExponentialLR(optims[1],
-                                                                      gamma = self.params['scheduler_gamma_2'])
-                        scheds.append({"scheduler": scheduler2, "interval": "epoch"})
-                except:
-                    pass
-                return optims, scheds
-        except:
-            return optims
+        if self.params.get('use_adaptive_lr', False):
+            factor = self.params.get('lr_reduce_factor', 0.5)
+            patience = self.params.get('lr_patience', 1)
+            min_lr = self.params.get('min_lr', 1e-6)
+
+            scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+                optimizer,
+                mode='min',
+                factor=factor,
+                patience=patience,
+                verbose=True,
+                threshold=0.0001,
+                min_lr=min_lr
+            )
+
+            return {
+                "optimizer": optimizer,
+                "lr_scheduler": {
+                    "scheduler": scheduler,
+                    "monitor": "val_Reconstruction_Loss",
+                    "interval": "epoch",
+                    "frequency": 1
+                }
+            }
+        else:
+            try:
+                if self.params['scheduler_gamma'] is not None:
+                    scheduler = optim.lr_scheduler.ExponentialLR(optims[0],
+                                                                gamma=self.params['scheduler_gamma'])
+                    scheds.append({"scheduler": scheduler, "interval": "epoch"})
+                    # Check if another scheduler is required for the second optimizer
+                    try:
+                        if self.params['scheduler_gamma_2'] is not None:
+                            scheduler2 = optim.lr_scheduler.ExponentialLR(optims[1],
+                                                                        gamma=self.params['scheduler_gamma_2'])
+                            scheds.append({"scheduler": scheduler2, "interval": "epoch"})
+                    except:
+                        pass
+                    return optims, scheds
+            except:
+                return optims
 
     def ensure_4_dims(self, t):
         if len(t.shape) != 4:
