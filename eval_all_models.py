@@ -70,6 +70,7 @@ def run_test(model_info, args, test_dataset, idx=None, total=None):
                   'DFCVAE':'dfc_vae.yaml',
                   'PureAE':'pure_ae.yaml',
                   'BigAE':'big_ae.yaml',
+                  'PatientAE':'patient_ae.yaml',
                   'MSSIMVAE':'mssim_vae.yaml',}
     cmd = [
         "python", "run.py",
