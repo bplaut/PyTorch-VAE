@@ -76,6 +76,8 @@ class VAEXperiment(pl.LightningModule):
             print(f"Training Loss: {metrics['loss']:.5f}")
         if 'val_loss' in metrics:
             print(f"Validation Loss: {metrics['val_loss']:.5f}")
+        if self.params.get('adaptive_lr', False):
+            print(f"Current LR: {self.trainer.lr_schedulers[0]['scheduler'].optimizer.param_groups[0]['lr']:.5f}")
 
         print("-" * 50 + "\n")
 
@@ -397,18 +399,14 @@ class VAEXperiment(pl.LightningModule):
         except:
             pass
         if self.params.get('adaptive_lr', False):
-            factor = self.params.get('lr_reduce_factor', 0.5)
-            patience = self.params.get('lr_patience', 1)
-            min_lr = self.params.get('min_lr', 1e-6)
-
             scheduler = optim.lr_scheduler.ReduceLROnPlateau(
                 optimizer,
                 mode='min',
-                factor=factor,
-                patience=patience,
-                verbose=True,
-                threshold=0.01,
-                min_lr=min_lr
+                factor=0.5,
+                patience=5,
+                threshold=0.0001,
+                threshold_mode='abs',
+                min_lr=1e-6,
             )
 
             return {
