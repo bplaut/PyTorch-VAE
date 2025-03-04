@@ -6,7 +6,7 @@
 
 cd /nas/ucb/bplaut/PyTorch-VAE
 eval "$(/nas/ucb/bplaut/miniconda3/bin/conda shell.bash hook)"
-conda activate /nas/ucb/bplaut/miniconda3/envs/nas-vae
+conda activate /nas/ucb/bplaut/miniconda3/envs/vae
 
 # Capture command-line inputs
 if [ "$#" -ne 4 ]; then
