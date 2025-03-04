@@ -156,11 +156,11 @@ class VAEXperiment(pl.LightningModule):
             recons = single_results[0]
             recons = self.ensure_4_dims(recons)
 
-            # Scale losses by 100 for readability
-            total_loss = single_loss['loss'].item() * 100
-            recon_loss = single_loss['Reconstruction_Loss'].item() * 100
+            # Scale losses by 1000 for readability
+            total_loss = single_loss['loss'].item() * 1000
+            recon_loss = single_loss['Reconstruction_Loss'].item() * 1000
             if 'feature_loss' in single_loss:
-                feature_loss = single_loss['feature_loss'].item() * 100
+                feature_loss = single_loss['feature_loss'].item() * 1000
             else:
                 feature_loss = None
 
@@ -211,7 +211,7 @@ class VAEXperiment(pl.LightningModule):
         os.makedirs(comparison_dir, exist_ok=True)
 
         # Print normalization ranges
-        print(f"Loss ranges:")
+        print(f"Loss ranges (scaled by 1000):")
         print(f"  Total Loss: {self.loss_stats['total_loss']['min']:.4f} to {self.loss_stats['total_loss']['max']:.4f}")
         print(f"  Recon Loss: {self.loss_stats['recon_loss']['min']:.4f} to {self.loss_stats['recon_loss']['max']:.4f}")
         if self.test_data[0]['feature_loss'] is not None:
