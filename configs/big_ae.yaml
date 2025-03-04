@@ -2,7 +2,7 @@ model_params:
   name: 'PureAE'
   in_channels: 3
   latent_dim: 128
-  hidden_dims: [32, 64, 128, 256, 512, 1024, 2048]
+  hidden_dims: [128, 256, 512, 1024, 2048]
 
 data_params:
   data_path: "Data/"
