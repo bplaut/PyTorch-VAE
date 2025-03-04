@@ -403,9 +403,9 @@ class VAEXperiment(pl.LightningModule):
                 mode='min',
                 factor=0.5,
                 patience=5,
-                threshold=0.0001,
+                threshold=0.00003,
                 threshold_mode='abs',
-                min_lr=1e-6,
+                min_lr=1e-7,
             )
 
             return {
