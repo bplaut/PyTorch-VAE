@@ -89,13 +89,13 @@ runner = Trainer(logger=tb_logger,
 
 if args.trained_model_path is None:
     # No model checkpoint provided, train the model
-    print(f"----\nTraining {config['model_params']['name']}\n----")
+    print(f"----\nTraining {exp_name}\n----")
     runner.fit(experiment, datamodule=data)
     checkpoint_path = os.path.join(tb_logger.log_dir, "checkpoints", "last.ckpt")
 else:
     checkpoint_path = args.trained_model_path
 if args.test_dataset is not None:
-    print(f"----\nTesting {config['model_params']['name']} on {args.test_dataset}\n----")
+    print(f"----\nTesting {exp_name}\n----")
     runner.test(experiment, datamodule=data, ckpt_path=args.trained_model_path)
     # Make gifs of side-by-side images
     test_output_dir = os.path.join(args.test_output_dir, exp_name) if args.side_by_side_only else os.path.join(args.test_output_dir, exp_name, 'side-by-side')
