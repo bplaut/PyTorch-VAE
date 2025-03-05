@@ -73,14 +73,14 @@ class VAEXperiment(pl.LightningModule):
         print("\n" + "-" * 50)
         print(f"Epoch {self.current_epoch}:")
         print(f"Training total Loss: {metrics['loss']:.5f}")
-        if not self.almost_eq(metrics['Reconstruction_Loss'], metrics['loss']):
+        if not torch.isclose(metrics['Reconstruction_Loss'], metrics['loss']):
             print(f"Training recon loss: {metrics['Reconstruction_Loss']:.5f}")
-        if not self.almost_eq(metrics['feature_loss'], 0):
+        if not torch.isclose(metrics['feature_loss'], 0):
             print(f"Training feature loss: {metrics['feature_loss']:.5f}")
         print(f"Validation total loss: {metrics['val_loss']:.5f}")
-        if not self.almost_eq(metrics['val_Reconstruction_Loss'], metrics['val_loss']):
+        if not torch.isclose(metrics['val_Reconstruction_Loss'], metrics['val_loss']):
             print(f"Validation recon loss: {metrics['val_Reconstruction_Loss']:.5f}")
-        if not self.almost_eq(metrics['val_feature_loss'], 0):
+        if not torch.isclose(metrics['val_feature_loss'], 0):
             print(f"Validation feature loss: {metrics['val_feature_loss']:.5f}")
         print(f"Current LR: {self.trainer.lr_schedulers[0]['scheduler'].optimizer.param_groups[0]['lr']:.3g}")
 
@@ -326,9 +326,9 @@ class VAEXperiment(pl.LightningModule):
         ]
 
         for metric in metrics:
-            if self.almost_eq(metric["value"], 0):
+            if torch.isclose(metric["value"], 0):
                 continue
-            if metric['name'] == 'Total' and self.almost_eq(metric["value"], recon_loss):
+            if metric['name'] == 'Total' and torch.isclose(metric["value"], recon_loss):
                 continue
             x = metric["x"]
             color = self.get_color_from_score(metric["norm"])
@@ -449,6 +449,3 @@ class VAEXperiment(pl.LightningModule):
                 print(f"Adjusted tensor shape to: {t.shape}")
             self.logged_size_adjustment = True
         return t
-
-    def almost_eq(self, a, b, tol=1e-7):
-        return abs(a - b) < tol
