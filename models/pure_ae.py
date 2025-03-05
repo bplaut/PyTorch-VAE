@@ -74,6 +74,13 @@ class PureAE(BaseVAE):
                                       kernel_size=3, padding=1),
                             nn.Tanh())
 
+        if 'use_vgg' in self.params and self.params['use_vgg']:
+            self.feature_network = vgg19_bn(pretrained=True)
+            # Freeze the pretrained feature network
+            for param in self.feature_network.parameters():
+                param.requires_grad = False
+            self.feature_network.eval()
+            
     def encode(self, input: Tensor) -> Tensor:
         """
         Encodes the input by passing through the encoder network
@@ -106,12 +113,38 @@ class PureAE(BaseVAE):
     def forward(self, input: Tensor, **kwargs) -> List[Tensor]:
         z = self.encode(input)[0]  # Get first (only) element from encode output
         recons = self.decode(z)
-        
-        # Return list in format compatible with existing framework
-        # [reconstructed_image, original_image, empty_tensor, empty_tensor]
-        # to match VAE's [recons, input, mu, log_var]
-        dummy_tensor = torch.zeros_like(z)  # Just a placeholder
-        return [recons, input, dummy_tensor, dummy_tensor]
+
+        if 'use_vgg' in self.params and self.params['use_vgg']:
+            input_features = self.extract_features(input)
+            recons_features = self.extract_features(recons)
+        else: # Just use placeholders, we'll ignore them if we're not using VGG
+            input_features = torch.zeros_like(z) 
+            recons_features = torch.zeros_like(z)
+        return [recons, input, recons_features, input_features]
+
+    def extract_features(self,
+                         input: Tensor,
+                         feature_layers: List = None) -> List[Tensor]:
+        """                                                                                                
+        Extracts the features from the pretrained model    
+        at the layers indicated by feature_layers.
+        :param input: (Tensor) [B x C x H x W]
+        :param feature_layers: List of string of IDs
+        :return: List of the extracted features
+        """
+        if not ('use_vgg' in self.params and self.params['use_vgg']):
+            raise ValueError("Should not get here because we only call this when we're using VGG")
+                
+        if feature_layers is None:
+            feature_layers = ['14', '24', '34', '43']
+        features = []
+        result = input
+        for (key, module) in self.feature_network.features._modules.items():
+            result = module(result)
+            if(key in feature_layers):
+                features.append(result)
+
+        return features    
 
     def loss_function(self,
                       *args,
@@ -124,12 +157,22 @@ class PureAE(BaseVAE):
         """
         recons = args[0]
         input = args[1]
+        recons_features = args[2]
+        input_features = args[3]
         
-        # Simple MSE reconstruction loss
+        # Simple MSE pixel loss
         recons_loss = F.mse_loss(recons, input)
+
+        # VGG loss
+        feature_loss = 0
+        if 'use_vgg' in self.params and self.params['use_vgg']:
+            for (r, i) in zip(recons_features, input_features):
+                feature_loss += F.mse_loss(r, i)
+            loss = recons_loss + feature_loss
+        else:
+            loss = recons_loss
         
-        # Return in format compatible with existing framework
-        return {'loss': recons_loss, 'Reconstruction_Loss': recons_loss, 'KLD': torch.tensor(0.0).to(recons.device)}
+        return {'loss': loss, 'Reconstruction_Loss': recons_loss, 'KLD': 0, 'feature_loss': feature_loss}
 
     def sample(self,
                num_samples: int,
@@ -141,7 +184,7 @@ class PureAE(BaseVAE):
         :param current_device: (Int) Device to run the model
         :return: (Tensor)
         """
-        # Sample from uniform distribution in latent space (unlike VAE's normal distribution)
+        # We'll probably never use this, but it's here for compatibility
         z = torch.rand(num_samples, self.latent_dim, device=current_device) * 2 - 1
         
         samples = self.decode(z)

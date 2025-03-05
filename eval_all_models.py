@@ -9,6 +9,7 @@ config_map = {'VanillaVAE':'vae.yaml',
               'DFCVAE':'dfc_vae.yaml',
               'PureAE':'pure_ae.yaml',
               'BigAE':'big_ae.yaml',
+              'VGGAE':'vgg_ae.yaml',
               'AdaptiveAE':'adaptive_lr_ae.yaml',
               'PatientAE':'patient_ae.yaml',
               'MSSIMVAE':'mssim_vae.yaml'}
