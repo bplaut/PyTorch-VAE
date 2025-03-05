@@ -72,7 +72,7 @@ class VAEXperiment(pl.LightningModule):
         metrics = self.trainer.callback_metrics
         print("\n" + "-" * 50)
         print(f"Epoch {self.current_epoch}:")
-        print(f"Training Total Loss: {metrics['loss']:.5f}")
+        print(f"Training total Loss: {metrics['loss']:.5f}")
         if metrics['Reconstruction_Loss'] != metrics['loss']:
             print(f"Training recon loss: {metrics['Reconstruction_Loss']:.5f}")
         if metrics['feature_loss'] != 0:
