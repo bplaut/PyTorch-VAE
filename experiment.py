@@ -397,7 +397,7 @@ class VAEXperiment(pl.LightningModule):
                 optims.append(optimizer2)
         except:
             pass
-        if self.params.get('adaptive_lr', False):
+        if 'adaptive_lr' in self.params and self.params['adaptive_lr']:
             scheduler = optim.lr_scheduler.ReduceLROnPlateau(
                 optimizer,
                 mode='min',
