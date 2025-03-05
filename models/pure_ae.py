@@ -2,6 +2,7 @@ import torch
 from models import BaseVAE
 from torch import nn
 from torch.nn import functional as F
+from torchvision.models import vgg19_bn
 from .types_ import *
 
 class PureAE(BaseVAE):
@@ -15,10 +16,12 @@ class PureAE(BaseVAE):
                  in_channels: int,
                  latent_dim: int,
                  hidden_dims: List = None,
+                 use_vgg: bool = False,
                  **kwargs) -> None:
         super(PureAE, self).__init__()
 
         self.latent_dim = latent_dim
+        self.use_vgg = use_vgg
 
         modules = []
         if hidden_dims is None:
@@ -74,7 +77,7 @@ class PureAE(BaseVAE):
                                       kernel_size=3, padding=1),
                             nn.Tanh())
 
-        if 'use_vgg' in self.params and self.params['use_vgg']:
+        if self.use_vgg:
             self.feature_network = vgg19_bn(pretrained=True)
             # Freeze the pretrained feature network
             for param in self.feature_network.parameters():
@@ -114,7 +117,7 @@ class PureAE(BaseVAE):
         z = self.encode(input)[0]  # Get first (only) element from encode output
         recons = self.decode(z)
 
-        if 'use_vgg' in self.params and self.params['use_vgg']:
+        if self.use_vgg:
             input_features = self.extract_features(input)
             recons_features = self.extract_features(recons)
         else: # Just use placeholders, we'll ignore them if we're not using VGG
@@ -132,7 +135,7 @@ class PureAE(BaseVAE):
         :param feature_layers: List of string of IDs
         :return: List of the extracted features
         """
-        if not ('use_vgg' in self.params and self.params['use_vgg']):
+        if not self.use_vgg:
             raise ValueError("Should not get here because we only call this when we're using VGG")
                 
         if feature_layers is None:
@@ -164,15 +167,15 @@ class PureAE(BaseVAE):
         recons_loss = F.mse_loss(recons, input)
 
         # VGG loss
-        feature_loss = 0
-        if 'use_vgg' in self.params and self.params['use_vgg']:
+        feature_loss = torch.tensor(0.0).to(recons.device)
+        if self.use_vgg:
             for (r, i) in zip(recons_features, input_features):
                 feature_loss += F.mse_loss(r, i)
             loss = recons_loss + feature_loss
         else:
             loss = recons_loss
         
-        return {'loss': loss, 'Reconstruction_Loss': recons_loss, 'KLD': 0, 'feature_loss': feature_loss}
+        return {'loss': loss, 'Reconstruction_Loss': recons_loss, 'KLD': torch.tensor(0.0).to(recons.device), 'feature_loss': feature_loss}
 
     def sample(self,
                num_samples: int,
