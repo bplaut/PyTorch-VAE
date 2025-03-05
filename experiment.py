@@ -11,6 +11,7 @@ import torchvision.utils as vutils
 from torchvision.datasets import CelebA
 from torch.utils.data import DataLoader
 import numpy as np
+import matplotlib.pyplot as plt
 from PIL import Image, ImageDraw, ImageFont
 
 
@@ -75,12 +76,12 @@ class VAEXperiment(pl.LightningModule):
         print(f"Training total Loss: {metrics['loss']:.5f}")
         if not torch.isclose(metrics['Reconstruction_Loss'], metrics['loss']):
             print(f"Training recon loss: {metrics['Reconstruction_Loss']:.5f}")
-        if not torch.isclose(metrics['feature_loss'], 0):
+        if metrics['feature_loss'] != 0:
             print(f"Training feature loss: {metrics['feature_loss']:.5f}")
         print(f"Validation total loss: {metrics['val_loss']:.5f}")
         if not torch.isclose(metrics['val_Reconstruction_Loss'], metrics['val_loss']):
             print(f"Validation recon loss: {metrics['val_Reconstruction_Loss']:.5f}")
-        if not torch.isclose(metrics['val_feature_loss'], 0):
+        if metrics['val_feature_loss'] != 0:
             print(f"Validation feature loss: {metrics['val_feature_loss']:.5f}")
         print(f"Current LR: {self.trainer.lr_schedulers[0]['scheduler'].optimizer.param_groups[0]['lr']:.3g}")
 
@@ -122,7 +123,6 @@ class VAEXperiment(pl.LightningModule):
         real_img, labels = batch
         self.curr_device = real_img.device
 
-        # Initialize data storage if not already done
         if not hasattr(self, 'test_data'):
             self.test_data = []
             self.loss_stats = {
@@ -139,22 +139,17 @@ class VAEXperiment(pl.LightningModule):
                                             batch_idx=batch_idx)
         self.log_dict({f"test_{key}": val.item() for key, val in test_loss.items()}, sync_dist=True)
 
-        # Process each image and collect data
+        # Process each image individually and collect data
         for i in range(real_img.size(0)):
             img_idx = batch_idx * real_img.size(0) + i
 
-            # Get individual image
             single_img = real_img[i:i+1]
             single_label = labels[i:i+1] if labels is not None else None
-
-            # Forward pass for single image
             single_results = self.forward(single_img, labels=single_label)
             single_loss = self.model.loss_function(*single_results,
                                                M_N=self.params['kld_weight'],
                                                optimizer_idx=0,
                                                batch_idx=batch_idx)
-
-            # Get reconstructed image
             recons = single_results[0]
             recons = self.ensure_4_dims(recons)
 
@@ -270,38 +265,7 @@ class VAEXperiment(pl.LightningModule):
         # Clean up stored data
         delattr(self, 'test_data')
         delattr(self, 'loss_stats')
-
-    def generate_random_samples(self):
-        """
-        Generate random samples from the latent space
-        """
-        try:
-            test_data = next(iter(self.trainer.datamodule.test_dataloader()))
-            test_input, test_label = test_data
-            test_label = test_label.to(self.curr_device)
-
-            samples_dir = os.path.join(self.params['test_output_dir'], "samples")
-            os.makedirs(samples_dir, exist_ok=True)
-
-            with torch.no_grad():
-                samples = self.model.sample(64, self.curr_device, labels=test_label)
-
-            samples = self.ensure_4_dims(samples)
-
-            for i in range(samples.size(0)):
-                sample = samples[i:i+1]
-                sample_resized = torch.nn.functional.interpolate(
-                    sample, size=self.test_output_size, mode='bilinear', align_corners=False
-                )
-                vutils.save_image(sample_resized.cpu().data,
-                                  os.path.join(samples_dir, f"sample_{i}.png"),
-                                  normalize=True)
-
-            print(f"Random samples from latent space saved to: {samples_dir}")
-
-        except Exception as e:
-            print(f"Could not generate random samples: {e}")
-
+        
     def create_annotated_image(self, comparison_img, total_loss, total_norm_loss, recon_loss, recon_norm_loss, feature_loss, feature_norm_loss):
         img_width, img_height = comparison_img.size
         header_height = 40
@@ -326,7 +290,7 @@ class VAEXperiment(pl.LightningModule):
         ]
 
         for metric in metrics:
-            if torch.isclose(metric["value"], 0):
+            if metric["value"] == 0:
                 continue
             if metric['name'] == 'Total' and torch.isclose(metric["value"], recon_loss):
                 continue
@@ -378,6 +342,37 @@ class VAEXperiment(pl.LightningModule):
 
         return (r, g, b)
 
+    def generate_random_samples(self):
+        """
+        Generate random samples from the latent space
+        """
+        try:
+            test_data = next(iter(self.trainer.datamodule.test_dataloader()))
+            test_input, test_label = test_data
+            test_label = test_label.to(self.curr_device)
+
+            samples_dir = os.path.join(self.params['test_output_dir'], "samples")
+            os.makedirs(samples_dir, exist_ok=True)
+
+            with torch.no_grad():
+                samples = self.model.sample(64, self.curr_device, labels=test_label)
+
+            samples = self.ensure_4_dims(samples)
+
+            for i in range(samples.size(0)):
+                sample = samples[i:i+1]
+                sample_resized = torch.nn.functional.interpolate(
+                    sample, size=self.test_output_size, mode='bilinear', align_corners=False
+                )
+                vutils.save_image(sample_resized.cpu().data,
+                                  os.path.join(samples_dir, f"sample_{i}.png"),
+                                  normalize=True)
+
+            print(f"Random samples from latent space saved to: {samples_dir}")
+
+        except Exception as e:
+            print(f"Could not generate random samples: {e}")
+            
     def configure_optimizers(self):
         optims = []
         scheds = []
