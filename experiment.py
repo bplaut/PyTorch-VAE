@@ -77,7 +77,7 @@ class VAEXperiment(pl.LightningModule):
             print(f"Training recon loss: {metrics['Reconstruction_Loss']:.5f}")
         if metrics['feature_loss'] != 0:
             print(f"Training feature loss: {metrics['feature_loss']:.5f}")
-        print(f"Validation total ;oss: {metrics['val_loss']:.5f}")
+        print(f"Validation total loss: {metrics['val_loss']:.5f}")
         if metrics['val_Reconstruction_Loss'] != metrics['val_loss']:
             print(f"Validation recon loss: {metrics['val_Reconstruction_Loss']:.5f}")
         if metrics['val_feature_loss'] != 0:
