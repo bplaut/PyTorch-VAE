@@ -132,14 +132,11 @@ class VAEXperiment(pl.LightningModule):
             }
             print("Starting image collection for visualization...")
 
-        # Get batch results for logging
         results = self.forward(real_img, labels=labels)
         test_loss = self.model.loss_function(*results,
                                             M_N=self.params['kld_weight'],
                                             optimizer_idx=0,
                                             batch_idx=batch_idx)
-
-        # Log batch metrics
         self.log_dict({f"test_{key}": val.item() for key, val in test_loss.items()}, sync_dist=True)
 
         # Process each image and collect data
@@ -178,7 +175,6 @@ class VAEXperiment(pl.LightningModule):
                 self.loss_stats['feature_loss']['min'] = min(self.loss_stats['feature_loss']['min'], feature_loss)
                 self.loss_stats['feature_loss']['max'] = max(self.loss_stats['feature_loss']['max'], feature_loss)
 
-            # Resize images
             original_resized = torch.nn.functional.interpolate(
                 single_img, size=self.test_output_size, mode='bilinear', align_corners=False
             )
@@ -186,7 +182,6 @@ class VAEXperiment(pl.LightningModule):
                 recons, size=self.test_output_size, mode='bilinear', align_corners=False
             )
 
-            # Store data for processing
             self.test_data.append({
                 'img_idx': img_idx,
                 'original': original_resized.cpu(),
@@ -204,7 +199,6 @@ class VAEXperiment(pl.LightningModule):
         """
         print("Test completed! Processing images...")
 
-        # Create directories for output
         if not self.params['side_by_side_only']:
             original_dir = os.path.join(self.params['test_output_dir'], "originals")
             recon_dir = os.path.join(self.params['test_output_dir'], "reconstructions")
@@ -215,14 +209,12 @@ class VAEXperiment(pl.LightningModule):
             comparison_dir = self.params['test_output_dir']
         os.makedirs(comparison_dir, exist_ok=True)
 
-        # Print normalization ranges
         print(f"Loss ranges (scaled by 1000):")
         print(f"  Total Loss: {self.loss_stats['total_loss']['min']:.4f} to {self.loss_stats['total_loss']['max']:.4f}")
         print(f"  Recon Loss: {self.loss_stats['recon_loss']['min']:.4f} to {self.loss_stats['recon_loss']['max']:.4f}")
         if self.test_data[0]['feature_loss'] is not None:
             print(f"  Feature Loss: {self.loss_stats['feature_loss']['min']:.4f} to {self.loss_stats['feature_loss']['max']:.4f}")
 
-        # Process all collected data with consistent normalization
         for data in self.test_data:
             img_idx = data['img_idx']
             original = data['original']
@@ -240,7 +232,6 @@ class VAEXperiment(pl.LightningModule):
                                   os.path.join(recon_dir, f"{img_idx}.png"),
                                   normalize=True)
 
-            # Create side-by-side comparison
             comparison = torch.cat([original, reconstruction], dim=3)
 
             # Convert to PIL for annotation
@@ -273,7 +264,6 @@ class VAEXperiment(pl.LightningModule):
             print(f"Individual original images saved to: {original_dir}")
             print(f"Individual reconstructed images saved to: {recon_dir}")
 
-        # Generate random samples if requested
         if self.params.get('save_samples', False):
             self.generate_random_samples()
 
@@ -331,14 +321,14 @@ class VAEXperiment(pl.LightningModule):
 
         metrics = [
             {"name": "Total", "value": total_loss, "norm": total_norm_loss, "x": 10},
-            {"name": "Recon", "value": recon_loss, "norm": recon_norm_loss, "x": img_width // 3},
+            {"name": "Recon loss", "value": recon_loss, "norm": recon_norm_loss, "x": img_width // 3},
             {"name": "Feature", "value": feature_loss, "norm": feature_norm_loss, "x": 2 * img_width // 3}
         ]
 
         for metric in metrics:
             if self.almost_eq(metric["value"], 0):
                 continue
-            if metric['name'] == 'Recon' and self.almost_eq(metric["value"], total_loss):
+            if metric['name'] == 'Total' and self.almost_eq(metric["value"], recon_loss):
                 continue
             x = metric["x"]
             color = self.get_color_from_score(metric["norm"])
