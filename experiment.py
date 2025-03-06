@@ -354,7 +354,7 @@ class VAEXperiment(pl.LightningModule):
             color = self.get_color_from_score(metric["norm"])
 
             # Display normalized value (0-1)
-            text = f"{metric['name']}: {metric['value']:.3f}"
+            text = f"{metric['name']}: {metric['value']:.3f} ({int(metric['norm']*100)}%)"
             draw.text((x, 4), text, fill=color, font=font)
 
             meter_width = img_width // 4
@@ -378,23 +378,38 @@ class VAEXperiment(pl.LightningModule):
         return new_img
 
     def normalize_loss(self, loss_value, loss_type):
-        min_val = self.loss_stats[loss_type]['min']
-        max_val = self.loss_stats[loss_type]['max']
+        """
+        Calculate the percentile of a loss value within the distribution
+        """
+        # Extract all values of this loss type from the test data
+        if loss_type == 'total_loss':
+            all_values = [data['total_loss'] for data in self.test_data]
+        elif loss_type == 'recon_loss':
+            all_values = [data['recon_loss'] for data in self.test_data]
+        elif loss_type == 'feature_loss':
+            all_values = [data['feature_loss'] for data in self.test_data if data['feature_loss'] is not None]
 
-        if max_val == min_val:
-            return 0.5
+        # Calculate the percentile (0 to 1) of this value within the distribution
+        percentile = sum(1 for x in all_values if x <= loss_value) / len(all_values)
 
-        return max(0.0, min(1.0, (loss_value - min_val) / (max_val - min_val)))
+        return percentile
 
-    def get_color_from_score(self, score):
-        if score < 0.5:
-            r = int(128 * (score * 2))
+    def get_color_from_score(self, percentile):
+        """
+        Map a percentile (0-1) to a color: blue (0) -> purple (0.5) -> red (1)
+        """
+        if percentile < 0.5:
+            # Blue to Purple (0 to 0.5)
+            normalized = percentile * 2  # Scale 0-0.5 to 0-1
+            r = int(128 * normalized)
             g = 0
-            b = 255
+            b = int(255 - 127 * normalized)
         else:
-            r = int(128 + 127 * (score - 0.5) * 2)
+            # Purple to Red (0.5 to 1)
+            normalized = (percentile - 0.5) * 2  # Scale 0.5-1 to 0-1
+            r = int(128 + 127 * normalized)
             g = 0
-            b = int(255 * (1 - (score - 0.5) * 2))
+            b = int(128 - 128 * normalized)
 
         return (r, g, b)
 
