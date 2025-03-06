@@ -139,13 +139,13 @@ def main():
               f"trained on {result['train_dataset']}, " +
               f"tested on {result['test_dataset']}: {status}")
     print("Now copying the outputs: gif pdfs and histogram pngs")
-    gif_dir = "output"
-    os.makedirs(gif_dir, exist_ok=True)
-    os.system(f"rm {gif_dir}/*.pdf")
+    final_output_dir = "output"
+    os.makedirs(final_output_dir, exist_ok=True)
+    os.system(f"rm {final_output_dir}/*")
     os.system(f"rm output.zip")
-    os.system(f"cp {args.output_dir}/*.pdf {gif_dir}")
-    os.system(f"cp {args.output_dir}/*.png {gif_dir}")
-    os.system(f"zip -r output.zip {gif_dir}")
+    os.system(f"cp {args.output_dir}/*.pdf {final_output_dir}")
+    os.system(f"cp {args.output_dir}/*.png {final_output_dir}")
+    os.system(f"zip -r output.zip {final_output_dir}")
 
 if __name__ == "__main__":
     main()
