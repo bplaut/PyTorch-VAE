@@ -74,14 +74,15 @@ class VAEXperiment(pl.LightningModule):
         print("\n" + "-" * 50)
         print(f"Epoch {self.current_epoch}:")
         print(f"Training total Loss: {metrics['loss']:.5f}")
-        if not torch.isclose(metrics['Reconstruction_Loss'], metrics['loss']):
+        # If we only have reconstruction loss, no need to print stuff separately
+        if not math.isclose(metrics['Reconstruction_Loss'], metrics['loss']):
             print(f"Training recon loss: {metrics['Reconstruction_Loss']:.5f}")
-        if metrics['feature_loss'] != 0:
+        if not math.isclose(metrics['feature_loss'], 0):
             print(f"Training feature loss: {metrics['feature_loss']:.5f}")
         print(f"Validation total loss: {metrics['val_loss']:.5f}")
-        if not torch.isclose(metrics['val_Reconstruction_Loss'], metrics['val_loss']):
+        if not math.isclose(metrics['val_Reconstruction_Loss'], metrics['val_loss']):
             print(f"Validation recon loss: {metrics['val_Reconstruction_Loss']:.5f}")
-        if metrics['val_feature_loss'] != 0:
+        if not math.isclose(metrics['val_feature_loss'], 0):
             print(f"Validation feature loss: {metrics['val_feature_loss']:.5f}")
         print(f"Current LR: {self.trainer.lr_schedulers[0]['scheduler'].optimizer.param_groups[0]['lr']:.3g}")
 
@@ -192,8 +193,6 @@ class VAEXperiment(pl.LightningModule):
         """
         Function called at the end of test to save all images
         """
-        print("Test completed! Processing images...")
-
         if not self.params['side_by_side_only']:
             original_dir = os.path.join(self.params['test_output_dir'], "originals")
             recon_dir = os.path.join(self.params['test_output_dir'], "reconstructions")
@@ -209,6 +208,9 @@ class VAEXperiment(pl.LightningModule):
         print(f"  Recon Loss: {self.loss_stats['recon_loss']['min']:.4f} to {self.loss_stats['recon_loss']['max']:.4f}")
         if self.test_data[0]['feature_loss'] is not None:
             print(f"  Feature Loss: {self.loss_stats['feature_loss']['min']:.4f} to {self.loss_stats['feature_loss']['max']:.4f}")
+        print("Saving histogram...")
+        self.save_loss_histogram()
+        print("Saving reconstructed images...")
 
         for data in self.test_data:
             img_idx = data['img_idx']
@@ -266,6 +268,42 @@ class VAEXperiment(pl.LightningModule):
         delattr(self, 'test_data')
         delattr(self, 'loss_stats')
         
+    def save_loss_histogram(self):
+        """
+        Generate and save a histogram of total reconstruction error across individual frames
+        """
+        total_losses = [data['total_loss'] for data in self.test_data]
+
+        plt.figure(figsize=(10, 6))
+        plt.hist(total_losses, bins=40, alpha=0.8, color='blue')
+        plt.title('Histogram of Loss Values Across Time Steps')
+        plt.xlabel('Loss x1000')
+        plt.ylabel('Frequency')
+        plt.grid(True, alpha=0.3)
+
+        # Add vertical line for mean
+        mean_loss = np.mean(total_losses)
+        plt.axvline(x=mean_loss, color='red', linestyle='--', label=f'Mean: {mean_loss:.4f}')
+        plt.legend()
+
+        # Save the histogram
+        last_sep = self.params['test_output_dir'].rfind('/')
+        overall_output_dir = self.params['test_output_dir'][:last_sep]
+        exp_name = self.params['test_output_dir'][last_sep+1:]
+        histogram_path = os.path.join(overall_output_dir, f"{exp_name}_loss_histogram.png")
+        plt.savefig(histogram_path, dpi=300)
+        plt.close()
+
+        # Calculate and print statistics
+        print("\nTotal Loss Statistics:")
+        print(f"  Mean: {mean_loss:.4f}")
+        print(f"  Median: {np.median(total_losses):.4f}")
+        print(f"  Std Dev: {np.std(total_losses):.4f}")
+        print(f"  Min: {np.min(total_losses):.4f}")
+        print(f"  Max: {np.max(total_losses):.4f}")
+
+        print(f"Total loss histogram saved to: {histogram_path}")        
+
     def create_annotated_image(self, comparison_img, total_loss, total_norm_loss, recon_loss, recon_norm_loss, feature_loss, feature_norm_loss):
         img_width, img_height = comparison_img.size
         header_height = 40
@@ -290,9 +328,9 @@ class VAEXperiment(pl.LightningModule):
         ]
 
         for metric in metrics:
-            if metric["value"] == 0:
+            if math.isclose(metric["value"], 0):
                 continue
-            if metric['name'] == 'Total' and torch.isclose(metric["value"], recon_loss):
+            if metric['name'] == 'Total' and math.isclose(metric["value"], recon_loss):
                 continue
             x = metric["x"]
             color = self.get_color_from_score(metric["norm"])

@@ -138,13 +138,14 @@ def main():
         print(f"{result['model_type']} (latent_dim={result['latent_dim']}, kl_penalty={result['kl_penalty']}) " +
               f"trained on {result['train_dataset']}, " +
               f"tested on {result['test_dataset']}: {status}")
-    print("Now copying the tex pdf outputs...")
-    gif_dir = "output_gifs"
+    print("Now copying the outputs: gif pdfs and histogram pngs")
+    gif_dir = "output"
     os.makedirs(gif_dir, exist_ok=True)
     os.system(f"rm {gif_dir}/*.pdf")
-    os.system(f"rm output_gifs.zip")
+    os.system(f"rm output.zip")
     os.system(f"cp {args.output_dir}/*.pdf {gif_dir}")
-    os.system(f"zip -r output_gifs.zip {gif_dir}")
+    os.system(f"cp {args.output_dir}/*.png {gif_dir}")
+    os.system(f"zip -r output.zip {gif_dir}")
 
 if __name__ == "__main__":
     main()
