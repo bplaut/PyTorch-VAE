@@ -28,6 +28,7 @@ def parse_args():
     parser.add_argument('-s', '--side_by_side_only', action='store_true',help='Only save side-by-side images', default=False)
     parser.add_argument('-o', '--output_dir', type=str, default='test_outputs', help='Directory to save test outputs')
     parser.add_argument('-a', '--annotate_loss', action='store_true', help='Annotate the output images with the loss', default=False)
+    parser.add_argument('--cleanup', action='store_true', help='Delete the output directory after running tests', default=False)
     return parser.parse_args()
 
 def find_trained_models(models_dir, checkpoint_name):
@@ -146,6 +147,8 @@ def main():
     os.system(f"cp {args.output_dir}/*.pdf {final_output_dir}")
     os.system(f"cp {args.output_dir}/*.png {final_output_dir}")
     os.system(f"zip -r output.zip {final_output_dir}")
+    if args.cleanup:
+        os.system(f"rm -r {args.output_dir}")
 
 if __name__ == "__main__":
     main()
