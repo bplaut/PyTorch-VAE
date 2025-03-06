@@ -1,4 +1,5 @@
 import os
+import subprocess
 import yaml
 import argparse
 import numpy as np
@@ -99,8 +100,8 @@ if args.test_dataset is not None:
     test_output_dir = os.path.join(args.test_output_dir, exp_name) if args.side_by_side_only else os.path.join(args.test_output_dir, exp_name, 'side-by-side')
     make_tex(test_output_dir, exp_name + '.tex')
     # Compile the tex file. For some reason we need to do it twice to make the gifs work
-    os.system(f"cd {args.test_output_dir}; pdflatex {exp_name}.tex")
-    os.system(f"cd {args.test_output_dir}; pdflatex {exp_name}.tex")    
+    subprocess.run(f"cd {args.test_output_dir}; pdflatex {exp_name}.tex", shell=True, stdout=subprocess.DEVNULL)
+    subprocess.run(f"cd {args.test_output_dir}; pdflatex {exp_name}.tex", shell=True, stdout=subprocess.DEVNULL) 
 
 # Cleanup
 if torch.distributed.is_initialized():
