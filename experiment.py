@@ -271,19 +271,34 @@ class VAEXperiment(pl.LightningModule):
     def save_loss_histogram(self):
         """
         Generate and save a histogram of total reconstruction error across individual frames
+        with vertical lines at 20th, 40th, 60th, and 80th percentiles
         """
+
+        # Create directory for histogram
+        histogram_dir = os.path.join(self.params['test_output_dir'], "histograms")
+        os.makedirs(histogram_dir, exist_ok=True)
+
+        # Extract total losses from test data
         total_losses = [data['total_loss'] for data in self.test_data]
 
+        # Calculate percentiles
+        percentiles = [20, 40, 60, 80]
+        percentile_values = np.percentile(total_losses, percentiles)
+
+        # Create histogram
         plt.figure(figsize=(10, 6))
         plt.hist(total_losses, bins=40, alpha=0.8, color='blue')
-        plt.title('Histogram of Loss Values Across Time Steps')
-        plt.xlabel('Loss x1000')
+        plt.title('Histogram of loss across time steps')
+        plt.xlabel('Loss (x1000)')
         plt.ylabel('Frequency')
         plt.grid(True, alpha=0.3)
 
-        # Add vertical line for mean
-        mean_loss = np.mean(total_losses)
-        plt.axvline(x=mean_loss, color='red', linestyle='--', label=f'Mean: {mean_loss:.4f}')
+        # Add vertical lines for percentiles
+        colors = ['green', 'orange', 'purple', 'red']
+        for i, (percentile, value) in enumerate(zip(percentiles, percentile_values)):
+            plt.axvline(x=value, color=colors[i], linestyle='--', 
+                       label=f'{percentile}th percentile: {value:.4f}')
+
         plt.legend()
 
         # Save the histogram
@@ -296,14 +311,17 @@ class VAEXperiment(pl.LightningModule):
 
         # Calculate and print statistics
         print("\nTotal Loss Statistics:")
-        print(f"  Mean: {mean_loss:.4f}")
+        print(f"  Mean: {np.mean(total_losses):.4f}")
         print(f"  Median: {np.median(total_losses):.4f}")
         print(f"  Std Dev: {np.std(total_losses):.4f}")
         print(f"  Min: {np.min(total_losses):.4f}")
         print(f"  Max: {np.max(total_losses):.4f}")
+        print("\nPercentiles:")
+        for percentile, value in zip(percentiles, percentile_values):
+            print(f"  {percentile}th: {value:.4f}")
 
-        print(f"Total loss histogram saved to: {histogram_path}")        
-
+        print(f"Loss histogram saved to: {histogram_path}")
+    
     def create_annotated_image(self, comparison_img, total_loss, total_norm_loss, recon_loss, recon_norm_loss, feature_loss, feature_norm_loss):
         img_width, img_height = comparison_img.size
         header_height = 40
