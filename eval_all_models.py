@@ -13,6 +13,8 @@ config_map = {'VanillaVAE':'vae.yaml',
               'AdaptiveAE':'adaptive_lr_ae.yaml',
               'PatientAE':'patient_ae.yaml',
               'PatientBigAE':'patient_big_ae.yaml',
+              'PatientVBigAE':'patient_vbig_ae.yaml',
+              'PatientVVBigAE':'patient_vvbig_ae.yaml',
               'MSSIMVAE':'mssim_vae.yaml'}
 
 def parse_args():
