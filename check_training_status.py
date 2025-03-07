@@ -44,7 +44,7 @@ def main():
     
     if results:
         print("Results:")
-        for model, (version, count) in results.items():
+        for model, (version, count) in sorted(results.items()):
             print(f"{model}: {version} completed {count} epochs")
     else:
         print(f"No reconstruction directories found in {args.directory}")
