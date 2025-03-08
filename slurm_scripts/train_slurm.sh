@@ -1,10 +1,11 @@
 #!/bin/bash
 #SBATCH --job-name=ae
-#SBATCH --time=3-00:00:00
+#SBATCH --time=7-00:00:00
 #SBATCH --output=output_from_slurm/%j.out
 #SBATCH --gpus=1
 #SBATCH --nodes=1
-#SBATCH --qos=default
+#SBATCH --nodelist=ddpg.ist.berkeley.edu
+#SBATCH --qos=high
 
 cd /nas/ucb/bplaut/PyTorch-VAE
 eval "$(/nas/ucb/bplaut/miniconda3/bin/conda shell.bash hook)"

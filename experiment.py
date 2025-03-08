@@ -47,8 +47,12 @@ class VAEXperiment(pl.LightningModule):
                                               batch_idx = batch_idx)
 
         self.log_dict({key: val.item() for key, val in train_loss.items()}, sync_dist=True)
+        self.trainer.datamodule.update_batch_difficulty(batch_idx, train_loss['loss'].item())
 
         return train_loss['loss']
+
+    def on_train_epoch_end(self):
+        self.trainer.datamodule.on_epoch_end()
 
     def validation_step(self, batch, batch_idx, optimizer_idx = 0):
         real_img, labels = batch
@@ -63,7 +67,7 @@ class VAEXperiment(pl.LightningModule):
         self.log_dict({f"val_{key}": val.item() for key, val in val_loss.items()}, sync_dist=True)
 
         
-    def on_validation_end(self) -> None:
+    def on_validation_end(self):
         self.sample_images()
 
     def on_validation_epoch_end(self):

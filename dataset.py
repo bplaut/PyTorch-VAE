@@ -8,6 +8,7 @@ from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 import zipfile
+from difficulty_data_sampler import DifficultyDataSampler
 
 
 # Add your custom dataset class here
@@ -64,6 +65,7 @@ class VAEDataset(LightningDataModule):
         pin_memory: bool = False,
         train_dataset = 'coinrun',
         test_dataset = None,
+        use_difficulty_sampling = False,
         **kwargs,
     ):
         super().__init__()
@@ -78,14 +80,19 @@ class VAEDataset(LightningDataModule):
         self.pin_memory = pin_memory
         self.train_dataset_name = train_dataset
         self.test_dataset_name = test_dataset
+        self.use_difficulty_sampling = use_difficulty_sampling
+        self.batch_losses = {}
 
     def setup(self, stage: Optional[str] = None) -> None:    
         transform = transforms.Compose([transforms.Resize(self.patch_size),
                                               transforms.ToTensor(),])
 
+        self.difficulty_sampler = None
         if self.train_dataset_name is not None:
             self.train_dataset = MyDataset(self.train_data_dir, split='train', transform=transform)
             self.val_dataset = MyDataset(self.train_data_dir, split='test', transform=transform)
+            if self.use_difficulty_sampling:
+                self.difficulty_sampler = DifficultyDataSampler(len(self.train_dataset), self.train_batch_size)
         else:
             self.train_dataset, self.val_dataset = None, None
         
@@ -96,13 +103,22 @@ class VAEDataset(LightningDataModule):
             self.test_dataset = self.val_dataset
         
     def train_dataloader(self) -> DataLoader:
-        return DataLoader(
-            self.train_dataset,
-            batch_size=self.train_batch_size,
-            num_workers=self.num_workers,
-            shuffle=True,
-            pin_memory=self.pin_memory,
-        )
+        if self.difficulty_sampler is not None:
+            return DataLoader(
+                self.train_dataset,
+                batch_size=self.train_batch_size,
+                num_workers=self.num_workers,
+                pin_memory=self.pin_memory,
+                sampler=self.difficulty_sampler
+            )
+        else:
+            return DataLoader(
+                self.train_dataset,
+                batch_size=self.train_batch_size,
+                num_workers=self.num_workers,
+                shuffle=True,
+                pin_memory=self.pin_memory,
+            )
 
     def val_dataloader(self) -> Union[DataLoader, List[DataLoader]]:
         return DataLoader(
@@ -121,3 +137,11 @@ class VAEDataset(LightningDataModule):
             shuffle=False,  # Don't shuffle for test to get consistent results
             pin_memory=self.pin_memory,
         )
+
+    def update_batch_difficulty(self, batch_idx, loss):
+        self.batch_losses[batch_idx] = loss
+    
+    def on_epoch_end(self):
+        if self.difficulty_sampler is not None:
+            self.difficulty_sampler.update_weights(self.batch_losses)
+        self.batch_losses = {}
