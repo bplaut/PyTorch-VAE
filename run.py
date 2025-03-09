@@ -78,9 +78,10 @@ runner = Trainer(logger=tb_logger,
                 callbacks=[
                     LearningRateMonitor(),
                     ModelCheckpoint(save_top_k=1, 
-                                   dirpath=os.path.join(tb_logger.log_dir, "checkpoints"), 
-                                   monitor="val_loss",
-                                   save_last=True),
+                                    dirpath=os.path.join(tb_logger.log_dir, "checkpoints"),
+                                    filename='best',
+                                    monitor="val_loss",
+                                    save_last=True),
                 ],
                 strategy=DDPPlugin(find_unused_parameters=False),
                 **config['trainer_params'])
