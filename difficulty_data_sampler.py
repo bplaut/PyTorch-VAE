@@ -51,7 +51,7 @@ class DifficultyDataSampler(Sampler):
         # Create new weights based on losses
         new_weights = np.array([batch_losses[i] for i in range(self.num_batches_available)])
         # print weight stats to 4 decimal places
-        print("New batch difficulty weights computed: mean={:.4f}, std={:.4f}, min={:.4f}, max={:.4f}, median={:.4f}, sum={:.4f}".format(np.mean(new_weights), np.std(new_weights), np.min(new_weights), np.max(new_weights), np.median(new_weights), np.sum(new_weights)))
+        print("\nNew batch weights: mean={:.4f}, std={:.4f}, min={:.4f}, max={:.4f}, median={:.4f}, sum={:.4f}\n".format(np.mean(new_weights), np.std(new_weights), np.min(new_weights), np.max(new_weights), np.median(new_weights), np.sum(new_weights)))
         
         # Apply softmax-like normalization to emphasize differences
         # Adding small epsilon to avoid division by zero
