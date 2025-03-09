@@ -6,6 +6,7 @@ model_params:
 
 data_params:
   use_difficulty_sampling: True
+  softmax: True
   data_path: "Data/"
   train_batch_size: 64
   val_batch_size:  64
@@ -26,5 +27,5 @@ trainer_params:
 
 logging_params:
   save_dir: "logs/"
-  name: "DifficultySamplerAE"
+  name: "ExpDifficultySamplerAE"
   
