@@ -243,17 +243,10 @@ class VAEXperiment(pl.LightningModule):
 
             # Normalize values using global min/max
             total_norm_loss = self.normalize_loss(total_loss, 'total_loss')
-            recon_norm_loss = self.normalize_loss(recon_loss, 'recon_loss')
-            feature_norm_loss = self.normalize_loss(feature_loss, 'feature_loss') if feature_loss is not None else None
 
             # Create the final image
             if self.params['annotate_loss']:
-                final_img = self.create_annotated_image(
-                    comparison_pil, 
-                    total_loss, total_norm_loss,
-                    recon_loss, recon_norm_loss, 
-                    feature_loss, feature_norm_loss
-            )
+                final_img = self.create_annotated_image(comparison_pil, total_loss, total_norm_loss)
             else:
                 final_img = comparison_pil
 
@@ -326,9 +319,9 @@ class VAEXperiment(pl.LightningModule):
 
         print(f"Loss histogram saved to: {histogram_path}")
     
-    def create_annotated_image(self, comparison_img, total_loss, total_norm_loss, recon_loss, recon_norm_loss, feature_loss, feature_norm_loss):
+    def create_annotated_image(self, comparison_img, loss, norm_loss):
         img_width, img_height = comparison_img.size
-        header_height = 40
+        header_height = 25  # Adjusted for one line with larger text
 
         new_img = Image.new('RGB', (img_width, img_height + header_height), color=(240, 240, 240))
         new_img.paste(comparison_img, (0, header_height))
@@ -336,48 +329,39 @@ class VAEXperiment(pl.LightningModule):
         draw = ImageDraw.Draw(new_img)
 
         try:
-            font = ImageFont.truetype("arial.ttf", 14)
+            font = ImageFont.truetype("arial.ttf", 15)
         except IOError:
             try:
-                font = ImageFont.truetype("DejaVuSans.ttf", 14)
+                font = ImageFont.truetype("DejaVuSans.ttf", 15)
             except:
                 font = ImageFont.load_default()
 
-        metrics = [
-            {"name": "Total", "value": total_loss, "norm": total_norm_loss, "x": 10},
-            {"name": "Recon loss", "value": recon_loss, "norm": recon_norm_loss, "x": img_width // 3},
-            {"name": "Feature", "value": feature_loss, "norm": feature_norm_loss, "x": 2 * img_width // 3}
-        ]
+        color = self.get_color_from_score(norm_loss)
 
-        for metric in metrics:
-            if math.isclose(metric["value"], 0):
-                continue
-            if metric['name'] == 'Total' and math.isclose(metric["value"], recon_loss):
-                continue
-            x = metric["x"]
-            color = self.get_color_from_score(metric["norm"])
+        text = f"Loss: {loss:.3f} ({int(norm_loss*100)}%)"
 
-            # Display normalized value (0-1)
-            text = f"{metric['name']}: {metric['value']:.3f} ({int(metric['norm']*100)}%)"
-            draw.text((x, 4), text, fill=color, font=font)
+        left_margin = img_width // 6
+        draw.text((left_margin, (header_height - 18) // 2), text, fill=color, font=font)
 
-            meter_width = img_width // 4
-            meter_height = 10
-            meter_y = header_height - meter_height - 4
+        # Meter bar on the right
+        meter_start_x = img_width // 2 - 15
+        meter_width = img_width // 3 + 15
+        meter_height = 13
+        meter_y = (header_height - meter_height) // 2
 
-            # Background
+        # Background of meter
+        draw.rectangle(
+            [(meter_start_x, meter_y), (meter_start_x + meter_width, meter_y + meter_height)],
+            fill=(220, 220, 220), outline=(180, 180, 180)
+        )
+
+        # Filled part of meter
+        filled_width = int(meter_width * norm_loss)
+        if filled_width > 0:
             draw.rectangle(
-                [(x, meter_y), (x + meter_width, meter_y + meter_height)],
-                fill=(220, 220, 220), outline=(180, 180, 180)
+                [(meter_start_x, meter_y), (meter_start_x + filled_width, meter_y + meter_height)],
+                fill=color
             )
-
-            # Filled part
-            filled_width = int(meter_width * metric["norm"])
-            if filled_width > 0:
-                draw.rectangle(
-                    [(x, meter_y), (x + filled_width, meter_y + meter_height)],
-                    fill=color
-                )
 
         return new_img
 
