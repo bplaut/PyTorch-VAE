@@ -321,7 +321,7 @@ class VAEXperiment(pl.LightningModule):
     
     def create_annotated_image(self, comparison_img, loss, norm_loss):
         img_width, img_height = comparison_img.size
-        header_height = 25  # Adjusted for one line with larger text
+        header_height = 28  # Adjusted for one line with larger text
 
         new_img = Image.new('RGB', (img_width, img_height + header_height), color=(240, 240, 240))
         new_img.paste(comparison_img, (0, header_height))
