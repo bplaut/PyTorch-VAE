@@ -1,5 +1,6 @@
 import os
 import torch
+import random
 from torch import Tensor
 from pathlib import Path
 from typing import List, Optional, Sequence, Union, Any, Callable
@@ -17,8 +18,10 @@ class MyDataset(Dataset):
         self.transform = transform
         self.split = split
         
-        # Adjust this to match your dataset structure
         all_images = sorted([f for f in Path(data_dir).iterdir() if f.suffix in ['.jpg', '.png']], key=lambda x: int(x.stem))
+
+        if split == 'train':
+            random.shuffle(all_images)
         
         # Split into train/test sets (adjust ratio as needed)
         if split == 'train':
