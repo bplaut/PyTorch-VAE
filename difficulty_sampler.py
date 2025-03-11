@@ -27,10 +27,11 @@ class ImgDifficultySampler(Sampler):
     def update_img_difficulties(self, indices, losses):
         print("\nNum of unique imgs sampled this epoch:  ", len(set(indices)))
         self.epoch += 1
-
-        if self.epoch % 15 == 0: # reset img weights every so often
+        
+        num_epochs_until_reset = 15
+        if self.epoch % num_epochs_until_reset == 0:
             self.img_losses = np.ones(self.dataset_size)
-            print("10 epochs have passed, resetting image weights\n")
+            print(f"{num_epochs_until_reset} epochs have passed, resetting image weights\n")
         else:
             img_counts = np.zeros(self.dataset_size, dtype=np.int32)
             # Update running average of loss for each img. Note that imgs not appearing in indices/losses (i.e., imgs which didn't get sampled this epoch) will retain their previous loss
