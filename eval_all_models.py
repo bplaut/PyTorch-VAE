@@ -17,6 +17,7 @@ config_map = {'VanillaVAE':'vae.yaml',
               'VPatientBigAE':'vpatient_big_ae.yaml',
               'PatientVVBigAE':'patient_vvbig_ae.yaml',
               'DifficultySamplerAE':'difficulty_sampler.yaml',
+              'LinearDifficultySamplerAE':'difficulty_sampler.yaml',
               'MSSIMVAE':'mssim_vae.yaml'}
 
 def parse_args():
