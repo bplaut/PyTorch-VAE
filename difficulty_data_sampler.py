@@ -6,10 +6,9 @@ class DifficultyDataSampler(Sampler):
     """
     Sampler that prioritizes difficult examples based on their reconstruction loss.
     """
-    def __init__(self, dataset_size, batch_size, softmax):
+    def __init__(self, dataset_size, batch_size):
         self.dataset_size = dataset_size
         self.batch_size = batch_size
-        self.softmax = softmax
         # We're only going to sample from full batches (floor), but we'll use the ceiling to determine the total samples to align with what PyTorch Lightning expects
         self.num_batches_available = dataset_size // batch_size
         self.num_batches_to_sample = (dataset_size + batch_size - 1) // batch_size
@@ -51,12 +50,7 @@ class DifficultyDataSampler(Sampler):
                 
         # Create new weights based on losses
         new_weights = np.array([batch_losses[i] for i in range(self.num_batches_available)])
-
-        if self.softmax:
-            exp_weights = np.exp(new_weights - np.max(new_weights))
-            self.batch_weights = exp_weights / np.sum(exp_weights)
-        else:
-            self.batch_weights = new_weights / np.sum(new_weights)
+        self.batch_weights = new_weights / np.sum(new_weights)
         # print weight stats to 4 decimal places, scaled by 1000 for readability
-        print("\nNew batch weights: mean={:.4f}, std={:.4f}, min={:.4f}, max={:.4f}, median={:.4f}\n".format(np.mean(1000 * self.batch_weights), np.std(1000 * self.batch_weights), np.min(1000 * self.batch_weights), np.max(1000 * self.batch_weights), np.median(1000 * self.batch_weights)))
+        print("\nNew batch weights:  min={:.4f}, max={:.4f}, median={:.4f}, mean={:.4f}, std={:.4f}\n".format(1000 * np.min(self.batch_weights), 1000 * np.max(self.batch_weights), 1000 * np.median(self.batch_weights),1000 * np.mean(self.batch_weights),1000 * np.std(self.batch_weights)))
 

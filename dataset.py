@@ -69,7 +69,6 @@ class VAEDataset(LightningDataModule):
         train_dataset = 'coinrun',
         test_dataset = None,
         use_difficulty_sampling = False,
-        softmax = False,
         **kwargs,
     ):
         super().__init__()
@@ -86,7 +85,6 @@ class VAEDataset(LightningDataModule):
         self.test_dataset_name = test_dataset
         self.use_difficulty_sampling = use_difficulty_sampling
         self.batch_losses = {}
-        self.softmax = softmax # only used for difficulty sampling
 
     def setup(self, stage: Optional[str] = None) -> None:    
         transform = transforms.Compose([transforms.Resize(self.patch_size),
@@ -97,7 +95,7 @@ class VAEDataset(LightningDataModule):
             self.train_dataset = MyDataset(self.train_data_dir, split='train', transform=transform)
             self.val_dataset = MyDataset(self.train_data_dir, split='test', transform=transform)
             if self.use_difficulty_sampling:
-                self.difficulty_sampler = DifficultyDataSampler(len(self.train_dataset), self.train_batch_size, softmax=self.softmax)
+                self.difficulty_sampler = DifficultyDataSampler(len(self.train_dataset), self.train_batch_size)
         else:
             self.train_dataset, self.val_dataset = None, None
         
