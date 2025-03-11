@@ -9,6 +9,7 @@ class ImgDifficultySampler(Sampler):
     def __init__(self, dataset_size, batch_size):
         self.dataset_size = dataset_size
         self.batch_size = batch_size
+        self.epoch = 0
         
         # Initialize equal weights for all imgs
         self.img_losses = np.ones(dataset_size)
@@ -25,11 +26,17 @@ class ImgDifficultySampler(Sampler):
     
     def update_img_difficulties(self, indices, losses):
         print("\nNum of unique imgs sampled this epoch:  ", len(set(indices)))
-        
-        img_counts = np.zeros(self.dataset_size, dtype=np.int32)
-        # Update running average of loss for each img. Note that imgs not appearing in indices/losses (i.e., imgs which didn't get sampled this epoch) will retain their previous loss
-        for idx, loss in zip(indices, losses):
-            img_counts[idx] += 1
-            self.img_losses[idx] = (self.img_losses[idx] * (img_counts[idx] - 1) + loss) / img_counts[idx]
-        print("New img weights:  min={:.4f}, max={:.4f}, median={:.4f}, mean={:.4f}, std={:.4f}\n".format(np.min(100 * self.img_losses), np.max(100 * self.img_losses), np.median(100 * self.img_losses), np.mean(100 * self.img_losses), np.std(100 * self.img_losses)))
+        print("Average loss for sampled imgs:  {:.5f}".format(np.mean(losses)))
+        self.epoch += 1
+
+        if self.epoch % 15 == 0: # reset img weights every so often
+            self.img_losses = np.ones(self.dataset_size)
+            print("10 epochs have passed, resetting image weights\n")
+        else:
+            img_counts = np.zeros(self.dataset_size, dtype=np.int32)
+            # Update running average of loss for each img. Note that imgs not appearing in indices/losses (i.e., imgs which didn't get sampled this epoch) will retain their previous loss
+            for idx, loss in zip(indices, losses):
+                img_counts[idx] += 1
+                self.img_losses[idx] = (self.img_losses[idx] * (img_counts[idx] - 1) + loss) / img_counts[idx]
+            print("New img weights:  min={:.4f}, max={:.4f}, median={:.4f}, mean={:.4f}, std={:.4f}\n".format(np.min(100 * self.img_losses), np.max(100 * self.img_losses), np.median(100 * self.img_losses), np.mean(100 * self.img_losses), np.std(100 * self.img_losses)))
 
