@@ -38,10 +38,10 @@ class VAEXperiment(pl.LightningModule):
         return self.model(input, **kwargs)
 
     def training_step(self, batch, batch_idx, optimizer_idx = 0):
-        real_img, labels, indices = batch
-        self.curr_device = real_img.device
+        imgs, labels, indices = batch
+        self.curr_device = imgs.device
 
-        results = self.forward(real_img, labels = labels)
+        results = self.forward(imgs, labels = labels)
         train_loss = self.model.loss_function(*results,
                                               M_N = self.params['kld_weight'],
                                               optimizer_idx=optimizer_idx,
@@ -63,10 +63,10 @@ class VAEXperiment(pl.LightningModule):
         self.trainer.datamodule.on_epoch_end()
 
     def validation_step(self, batch, batch_idx, optimizer_idx = 0):
-        real_img, labels, _ = batch
-        self.curr_device = real_img.device
+        imgs, labels, _ = batch
+        self.curr_device = imgs.device
 
-        results = self.forward(real_img, labels = labels)
+        results = self.forward(imgs, labels = labels)
         val_loss = self.model.loss_function(*results,
                                             M_N = self.params['kld_weight'],
                                             optimizer_idx = optimizer_idx,
@@ -133,8 +133,8 @@ class VAEXperiment(pl.LightningModule):
                               nrow=12)
 
     def test_step(self, batch, batch_idx):
-        real_img, labels, _ = batch
-        self.curr_device = real_img.device
+        imgs, labels, _ = batch
+        self.curr_device = imgs.device
 
         if not hasattr(self, 'test_data'):
             self.test_data = []
@@ -145,7 +145,7 @@ class VAEXperiment(pl.LightningModule):
             }
             print("Starting image collection for visualization...")
 
-        results = self.forward(real_img, labels=labels)
+        results = self.forward(imgs, labels=labels)
         test_loss = self.model.loss_function(*results,
                                             M_N=self.params['kld_weight'],
                                             optimizer_idx=0,
@@ -153,10 +153,10 @@ class VAEXperiment(pl.LightningModule):
         self.log_dict({f"test_{key}": val.item() for key, val in test_loss.items()}, sync_dist=True)
 
         # Process each image individually and collect data
-        for i in range(real_img.size(0)):
-            img_idx = batch_idx * real_img.size(0) + i
+        for i in range(imgs.size(0)):
+            img_idx = batch_idx * imgs.size(0) + i
 
-            single_img = real_img[i:i+1]
+            single_img = imgs[i:i+1]
             single_label = labels[i:i+1] if labels is not None else None
             single_results = self.forward(single_img, labels=single_label)
             single_loss = self.model.loss_function(*single_results,
