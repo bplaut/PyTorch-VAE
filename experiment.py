@@ -215,11 +215,6 @@ class VAEXperiment(pl.LightningModule):
             comparison_dir = self.params['test_output_dir']
         os.makedirs(comparison_dir, exist_ok=True)
 
-        print(f"Loss ranges (scaled by 1000):")
-        print(f"  Total Loss: {self.loss_stats['total_loss']['min']:.4f} to {self.loss_stats['total_loss']['max']:.4f}")
-        print(f"  Recon Loss: {self.loss_stats['recon_loss']['min']:.4f} to {self.loss_stats['recon_loss']['max']:.4f}")
-        if self.test_data[0]['feature_loss'] is not None:
-            print(f"  Feature Loss: {self.loss_stats['feature_loss']['min']:.4f} to {self.loss_stats['feature_loss']['max']:.4f}")
         print("Saving histogram...")
         self.save_loss_histogram()
         print("Saving reconstructed images...")
