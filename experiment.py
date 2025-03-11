@@ -217,6 +217,9 @@ class VAEXperiment(pl.LightningModule):
 
         print("Saving histogram...")
         self.save_loss_histogram()
+        if self.params['histogram_only']:
+            print("Skipping image saving as requested.")
+            return
         print("Saving reconstructed images...")
 
         for data in self.test_data:

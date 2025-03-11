@@ -33,6 +33,7 @@ def parse_args():
     parser.add_argument('-o', '--output_dir', type=str, default='test_outputs', help='Directory to save test outputs')
     parser.add_argument('-a', '--annotate_loss', action='store_true', help='Annotate the output images with the loss', default=False)
     parser.add_argument('-u', '--cleanup', action='store_true', help='Delete the output directory after running tests', default=False)
+    parser.add_argument('-g', '--histogram_only', action='store_true', help='Only save histogram images in test', default=False)
     return parser.parse_args()
 
 def find_trained_models(models_dir, checkpoint_name):
@@ -94,6 +95,8 @@ def run_test(model_info, args, test_dataset, idx=None, total=None):
         cmd.append("--side_by_side_only")
     if args.annotate_loss:
         cmd.append("--annotate_loss")
+    if args.histogram_only:
+        cmd.append("--histogram_only")
     
 
     print(f"================\nRUNNING TEST COMMAND {idx+1}/{total}: " + " ".join(cmd) + "\n================")
