@@ -9,7 +9,7 @@ from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 import zipfile
-from difficulty_data_sampler import DifficultyDataSampler
+from difficulty_samplers import ImgDifficultySampler
 
 
 # Add your custom dataset class here
@@ -19,13 +19,10 @@ class MyDataset(Dataset):
         self.split = split
         
         all_images = sorted([f for f in Path(data_dir).iterdir() if f.suffix in ['.jpg', '.png']], key=lambda x: int(x.stem))
-
-        if split == 'train':
-            random.shuffle(all_images)
         
-        # Split into train/test sets (adjust ratio as needed)
         if split == 'train':
             self.images = all_images[:int(len(all_images) * train_ratio)]
+            random.shuffle(self.images)
         else:
             self.images = all_images[int(len(all_images) * train_ratio):]
         print(f"Loaded {len(self.images)} images from {data_dir} for {split} split.")
@@ -40,7 +37,7 @@ class MyDataset(Dataset):
         if self.transform is not None:
             img = self.transform(img)
         
-        return img, 0.0  # Return image and a dummy label
+        return img, 0.0, idx # img, dummy label, idx
     
 class VAEDataset(LightningDataModule):
     """
@@ -84,7 +81,8 @@ class VAEDataset(LightningDataModule):
         self.train_dataset_name = train_dataset
         self.test_dataset_name = test_dataset
         self.use_difficulty_sampling = use_difficulty_sampling
-        self.batch_losses = {}
+        self.sampled_img_indices = []
+        self.sampled_img_losses = []
 
     def setup(self, stage: Optional[str] = None) -> None:    
         transform = transforms.Compose([transforms.Resize(self.patch_size),
@@ -95,7 +93,7 @@ class VAEDataset(LightningDataModule):
             self.train_dataset = MyDataset(self.train_data_dir, split='train', transform=transform)
             self.val_dataset = MyDataset(self.train_data_dir, split='test', transform=transform)
             if self.use_difficulty_sampling:
-                self.difficulty_sampler = DifficultyDataSampler(len(self.train_dataset), self.train_batch_size)
+                self.difficulty_sampler = ImgDifficultySampler(len(self.train_dataset), self.train_batch_size)
         else:
             self.train_dataset, self.val_dataset = None, None
         
@@ -141,10 +139,16 @@ class VAEDataset(LightningDataModule):
             pin_memory=self.pin_memory,
         )
 
-    def update_batch_difficulty(self, batch_idx, loss):
-        self.batch_losses[batch_idx] = loss
+    def record_img_losses(self, indices, losses):
+        if isinstance(indices, torch.Tensor):
+            indices = indices.cpu().tolist()
+        if isinstance(losses, torch.Tensor):
+            losses = losses.cpu().tolist()
+        self.sampled_img_indices.extend(indices)
+        self.sampled_img_losses.extend(losses)
     
     def on_epoch_end(self):
         if self.difficulty_sampler is not None:
-            self.difficulty_sampler.update_weights(self.batch_losses)
-        self.batch_losses = {}
+            self.difficulty_sampler.update_img_difficulties(self.sampled_img_indices, self.sampled_img_losses)
+            self.sampled_img_indices = []
+            self.sampled_img_losses = []

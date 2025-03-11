@@ -8,6 +8,7 @@ from utils import data_loader
 import pytorch_lightning as pl
 from torchvision import transforms
 import torchvision.utils as vutils
+import torch.nn.functional as F
 from torchvision.datasets import CelebA
 from torch.utils.data import DataLoader
 import numpy as np
@@ -37,7 +38,7 @@ class VAEXperiment(pl.LightningModule):
         return self.model(input, **kwargs)
 
     def training_step(self, batch, batch_idx, optimizer_idx = 0):
-        real_img, labels = batch
+        real_img, labels, indices = batch
         self.curr_device = real_img.device
 
         results = self.forward(real_img, labels = labels)
@@ -47,7 +48,14 @@ class VAEXperiment(pl.LightningModule):
                                               batch_idx = batch_idx)
 
         self.log_dict({key: val.item() for key, val in train_loss.items()}, sync_dist=True)
-        self.trainer.datamodule.update_batch_difficulty(batch_idx, train_loss['loss'].item())
+
+        # Track per-image losses for difficulty sampling
+        recon_img = results[0]
+        input_img = results[1]
+        per_img_loss = F.mse_loss(recon_img, input_img, reduction='none')    
+        # Average over all dimensions except batch
+        per_img_loss = per_img_loss.mean(dim=[1, 2, 3])  # Average over channels, height, width        
+        self.trainer.datamodule.record_img_losses(indices, per_img_loss.detach().cpu())
 
         return train_loss['loss']
 
@@ -55,7 +63,7 @@ class VAEXperiment(pl.LightningModule):
         self.trainer.datamodule.on_epoch_end()
 
     def validation_step(self, batch, batch_idx, optimizer_idx = 0):
-        real_img, labels = batch
+        real_img, labels, _ = batch
         self.curr_device = real_img.device
 
         results = self.forward(real_img, labels = labels)
@@ -97,7 +105,7 @@ class VAEXperiment(pl.LightningModule):
         Generate and save sample reconstructions and random samples during training
         using the validation dataset, not the test dataset.
         """
-        val_input, val_label = next(iter(self.trainer.datamodule.val_dataloader()))
+        val_input, val_label, _ = next(iter(self.trainer.datamodule.val_dataloader()))
         val_input = val_input.to(self.curr_device)
         val_label = val_label.to(self.curr_device)
 
@@ -125,7 +133,7 @@ class VAEXperiment(pl.LightningModule):
                               nrow=12)
 
     def test_step(self, batch, batch_idx):
-        real_img, labels = batch
+        real_img, labels, _ = batch
         self.curr_device = real_img.device
 
         if not hasattr(self, 'test_data'):
@@ -406,8 +414,7 @@ class VAEXperiment(pl.LightningModule):
         Generate random samples from the latent space
         """
         try:
-            test_data = next(iter(self.trainer.datamodule.test_dataloader()))
-            test_input, test_label = test_data
+            test_input, test_label, _ = next(iter(self.trainer.datamodule.test_dataloader()))
             test_label = test_label.to(self.curr_device)
 
             samples_dir = os.path.join(self.params['test_output_dir'], "samples")
