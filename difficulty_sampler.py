@@ -26,7 +26,6 @@ class ImgDifficultySampler(Sampler):
     
     def update_img_difficulties(self, indices, losses):
         print("\nNum of unique imgs sampled this epoch:  ", len(set(indices)))
-        print("Average loss for sampled imgs:  {:.5f}".format(np.mean(losses)))
         self.epoch += 1
 
         if self.epoch % 15 == 0: # reset img weights every so often
