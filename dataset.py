@@ -9,7 +9,7 @@ from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 import zipfile
-from difficulty_samplers import ImgDifficultySampler
+from difficulty_sampler import ImgDifficultySampler
 
 
 # Add your custom dataset class here
