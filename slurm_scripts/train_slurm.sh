@@ -4,7 +4,6 @@
 #SBATCH --output=output_from_slurm/%j.out
 #SBATCH --gpus=1
 #SBATCH --nodes=1
-#SBATCH --nodelist=ddpg.ist.berkeley.edu
 #SBATCH --qos=high
 
 cd /nas/ucb/bplaut/PyTorch-VAE
