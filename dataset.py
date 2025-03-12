@@ -11,8 +11,6 @@ from torchvision import transforms
 import zipfile
 from difficulty_sampler import ImgDifficultySampler
 
-
-# Add your custom dataset class here
 class MyDataset(Dataset):
     def __init__(self, data_dir, transform=None, split='train', train_ratio=0.9):
         self.transform = transform
