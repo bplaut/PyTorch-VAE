@@ -32,10 +32,18 @@ class VAEXperiment(pl.LightningModule):
         try:
             self.hold_graph = self.params['retain_first_backpass']
         except:
-            pass
+            pass            
+        self.reset_extreme_image_tracking()
 
     def forward(self, input: Tensor, **kwargs) -> Tensor:
         return self.model(input, **kwargs)
+
+    def reset_extreme_image_tracking(self):
+        """Reset tracking of extreme loss images for a new training epoch."""
+        self.extreme_images = {
+            'highest': {'loss': float('-inf'), 'img': None, 'idx': None},
+            'lowest': {'loss': float('inf'), 'img': None, 'recon': None, 'idx': None}
+        }
 
     def training_step(self, batch, batch_idx, optimizer_idx = 0):
         imgs, labels, indices = batch
@@ -56,11 +64,64 @@ class VAEXperiment(pl.LightningModule):
         # Average over all dimensions except batch
         per_img_loss = per_img_loss.mean(dim=[1, 2, 3])  # Average over channels, height, width        
         self.trainer.datamodule.record_img_losses(indices, per_img_loss.detach().cpu())
+        
+        # Track images with extreme losses
+        for i in range(len(per_img_loss)):
+            loss_val = per_img_loss[i].item()
+            
+            # Check if this is the highest loss image so far
+            if loss_val > self.extreme_images['highest']['loss']:
+                self.extreme_images['highest'] = {
+                    'loss': loss_val,
+                    'img': imgs[i:i+1].detach().cpu(),
+                    'recon': recon_img[i:i+1].detach().cpu(),
+                    'idx': indices[i].item()
+                }
+            
+            # Check if this is the lowest loss image so far
+            if loss_val < self.extreme_images['lowest']['loss']:
+                self.extreme_images['lowest'] = {
+                    'loss': loss_val,
+                    'img': imgs[i:i+1].detach().cpu(),
+                    'recon': recon_img[i:i+1].detach().cpu(),
+                    'idx': indices[i].item()
+                }
 
         return train_loss['loss']
 
     def on_train_epoch_end(self):
+        """
+        Save extreme loss images and reset tracking at the end of each epoch.
+        """
+        # First, let the datamodule perform its end-of-epoch operations
         self.trainer.datamodule.on_epoch_end()
+        
+        # Create directory for saving comparisons
+        comparisons_dir = os.path.join(self.logger.log_dir, "highest_and_lowest_loss_imgs")
+        os.makedirs(comparisons_dir, exist_ok=True)
+        
+        # Save extreme images
+        for key in ['highest', 'lowest']:
+            data = self.extreme_images[key]
+            if data['img'] is not None:
+                # Resize to standard output size
+                img_resized = F.interpolate(
+                    data['img'], size=self.test_output_size, mode='bilinear', align_corners=False
+                )
+                recon_resized = F.interpolate(
+                    data['recon'], size=self.test_output_size, mode='bilinear', align_corners=False
+                )
+                
+                # Scale loss for readability
+                loss_val = data['loss'] * 1000
+                norm_loss = 0 if key == 'lowest' else 1
+                comparison = self.create_side_by_side_image(img_resized, recon_resized, loss_val, norm_loss)
+                comparison.save(os.path.join(
+                    comparisons_dir, 
+                    f"epoch_{self.current_epoch}_{key}_loss_{loss_val:.3f}_idx_{data['idx']}.png"
+                ))
+        
+        self.reset_extreme_image_tracking()
 
     def validation_step(self, batch, batch_idx, optimizer_idx = 0):
         imgs, labels, _ = batch
@@ -182,10 +243,10 @@ class VAEXperiment(pl.LightningModule):
                 self.loss_stats['feature_loss']['min'] = min(self.loss_stats['feature_loss']['min'], feature_loss)
                 self.loss_stats['feature_loss']['max'] = max(self.loss_stats['feature_loss']['max'], feature_loss)
 
-            original_resized = torch.nn.functional.interpolate(
+            original_resized = F.interpolate(
                 single_img, size=self.test_output_size, mode='bilinear', align_corners=False
             )
-            reconstruction_resized = torch.nn.functional.interpolate(
+            reconstruction_resized = F.interpolate(
                 recons, size=self.test_output_size, mode='bilinear', align_corners=False
             )
 
@@ -199,6 +260,37 @@ class VAEXperiment(pl.LightningModule):
             })
 
         return test_loss
+
+    def create_side_by_side_image(self, original, reconstruction, total_loss, total_norm_loss):
+        """
+        Create a side-by-side comparison of original and reconstructed images with loss annotation.
+        
+        Args:
+            original: Original image tensor
+            reconstruction: Reconstructed image tensor
+            total_loss: Loss value
+            total_norm_loss: Normalized loss (0-1). If None, will be calculated using global min/max if available.
+            
+        Returns:
+            PIL Image with side-by-side comparison and annotations
+        """
+        # Create side-by-side comparison
+        comparison = torch.cat([original, reconstruction], dim=3)
+        
+        # Convert to PIL for annotation
+        comparison_np = comparison.numpy()
+        comparison_np = np.transpose(comparison_np[0], (1, 2, 0))
+        comparison_np = (comparison_np - comparison_np.min()) / (comparison_np.max() - comparison_np.min()) * 255.0
+        comparison_pil = Image.fromarray(comparison_np.astype(np.uint8))
+        
+        
+        # Create annotated image if requested
+        if self.params.get('annotate_loss', True):
+            final_img = self.create_annotated_image(comparison_pil, total_loss, total_norm_loss)
+        else:
+            final_img = comparison_pil
+        
+        return final_img
 
     def on_test_end(self):
         """
@@ -226,9 +318,7 @@ class VAEXperiment(pl.LightningModule):
             original = data['original']
             reconstruction = data['reconstruction']
             total_loss = data['total_loss']
-            recon_loss = data['recon_loss']
-            feature_loss = data['feature_loss']
-
+            
             # Save individual images if needed
             if not self.params['side_by_side_only']:
                 vutils.save_image(original.data,
@@ -238,23 +328,13 @@ class VAEXperiment(pl.LightningModule):
                                   os.path.join(recon_dir, f"{img_idx}.png"),
                                   normalize=True)
 
-            comparison = torch.cat([original, reconstruction], dim=3)
-
-            # Convert to PIL for annotation
-            comparison_np = comparison.numpy()
-            comparison_np = np.transpose(comparison_np[0], (1, 2, 0))
-            comparison_np = (comparison_np - comparison_np.min()) / (comparison_np.max() - comparison_np.min()) * 255.0
-            comparison_pil = Image.fromarray(comparison_np.astype(np.uint8))
-
-            # Normalize values using global min/max
+            # Normalize the loss value
             total_norm_loss = self.normalize_loss(total_loss, 'total_loss')
-
-            # Create the final image
-            if self.params['annotate_loss']:
-                final_img = self.create_annotated_image(comparison_pil, total_loss, total_norm_loss)
-            else:
-                final_img = comparison_pil
-
+            
+            # Create side-by-side comparison using the helper function
+            final_img = self.create_side_by_side_image(original, reconstruction, total_loss, total_norm_loss)
+            
+            # Save the comparison
             final_img.save(os.path.join(comparison_dir, f"{img_idx}.png"))
 
         print(f"Saved {len(self.test_data)} annotated images.")
@@ -424,7 +504,7 @@ class VAEXperiment(pl.LightningModule):
 
             for i in range(samples.size(0)):
                 sample = samples[i:i+1]
-                sample_resized = torch.nn.functional.interpolate(
+                sample_resized = F.interpolate(
                     sample, size=self.test_output_size, mode='bilinear', align_corners=False
                 )
                 vutils.save_image(sample_resized.cpu().data,
