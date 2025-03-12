@@ -24,10 +24,9 @@ parser.add_argument('-t', '--test_dataset', type=str, help='Dataset to use for t
 parser.add_argument('-d', '--latent_dim', type=int, help='Latent dimension of the model. If provided, it will override the value in the config file')
 parser.add_argument('-p', '--trained_model_path', type=str, help='Path to the checkpoint to use for testing. If provided, training will be skipped')
 parser.add_argument('-k', '--kl_penalty', type=float, help='KL penalty to use for training. If provided, it will override the value in the config file')
-parser.add_argument('-s', '--save_samples', action='store_true', help='Save generated samples in addition to reconstructions', default=False)
 parser.add_argument('-o', '--test_output_dir', type=str, help='Where to save the output images from test', default='test_outputs')
-parser.add_argument('--side_by_side_only', action='store_true', help='Only save side-by-side images in testing', default=False)
-parser.add_argument('-a', '--annotate_loss', action='store_true', help='Annotate the output images with the loss', default=False)
+parser.add_argument('-e', '--extra_image_outputs', action='store_true', help='Output samples and individual reconstructions in addition to side-by-side comparisons', default=False)
+parser.add_argument('-a', '--dont_annotate_loss', action='store_true', help='Annotate the output images with the loss', default=False)
 parser.add_argument('--histogram_only', action='store_true', help='Only save histograms in testing', default=False)
 
 args = parser.parse_args()
@@ -45,9 +44,8 @@ for arg in vars(args):
 # Setup up parameters
 if args.train_dataset is None and args.test_dataset is None:
     raise ValueError("At least one of train_dataset and test_dataset must be provided")
-config['exp_params']['save_samples'] = args.save_samples
-config['exp_params']['side_by_side_only'] = args.side_by_side_only
-config['exp_params']['annotate_loss'] = args.annotate_loss
+config['exp_params']['extra_image_outputs'] = args.extra_image_outputs
+config['exp_params']['dont_annotate_loss'] = args.dont_annotate_loss
 config['exp_params']['histogram_only'] = args.histogram_only
 if args.latent_dim is not None:
     config['model_params']['latent_dim'] = args.latent_dim

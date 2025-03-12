@@ -136,9 +136,6 @@ class VAEXperiment(pl.LightningModule):
         self.log_dict({f"val_{key}": val.item() for key, val in val_loss.items()}, sync_dist=True)
 
         
-    def on_validation_end(self):
-        self.sample_images()
-
     def on_validation_epoch_end(self):
         if self.trainer.sanity_checking:
             return
@@ -159,38 +156,6 @@ class VAEXperiment(pl.LightningModule):
         print(f"Current LR: {self.trainer.lr_schedulers[0]['scheduler'].optimizer.param_groups[0]['lr']:.3g}")
 
         print("-" * 50 + "\n")
-
-    def sample_images(self):
-        """
-        Generate and save sample reconstructions and random samples during training
-        using the validation dataset, not the test dataset.
-        """
-        val_input, val_label, _ = next(iter(self.trainer.datamodule.val_dataloader()))
-        val_input = val_input.to(self.curr_device)
-        val_label = val_label.to(self.curr_device)
-
-        recons = self.model.generate(val_input, labels=val_label)
-        if len(recons.shape) > 4:
-            print(f"Detected non-standard reconstruction shape (expected for MIWAE): {recons.shape}. Using first sample.")
-            recons = recons[0]
-
-        vutils.save_image(recons.data,
-                          os.path.join(self.logger.log_dir, 
-                                       "reconstructions", 
-                                       f"recons_{self.logger.name}_Epoch_{self.current_epoch}.png"),
-                          normalize=True,
-                          nrow=12)
-
-        if self.params['save_samples']:
-            samples = self.model.sample(144,
-                                       self.curr_device,
-                                       labels=val_label)
-            vutils.save_image(samples.cpu().data,
-                              os.path.join(self.logger.log_dir, 
-                                           "samples",      
-                                           f"{self.logger.name}_Epoch_{self.current_epoch}.png"),
-                              normalize=True,
-                              nrow=12)
 
     def test_step(self, batch, batch_idx):
         imgs, labels, _ = batch
@@ -285,10 +250,10 @@ class VAEXperiment(pl.LightningModule):
         
         
         # Create annotated image if requested
-        if self.params.get('annotate_loss', True):
-            final_img = self.create_annotated_image(comparison_pil, total_loss, total_norm_loss)
-        else:
+        if self.params['dont_annotate_loss']:
             final_img = comparison_pil
+        else:
+            final_img = self.create_annotated_image(comparison_pil, total_loss, total_norm_loss)
         
         return final_img
 
@@ -296,7 +261,7 @@ class VAEXperiment(pl.LightningModule):
         """
         Function called at the end of test to save all images
         """
-        if not self.params['side_by_side_only']:
+        if self.params['extra_image_outputs']:
             original_dir = os.path.join(self.params['test_output_dir'], "originals")
             recon_dir = os.path.join(self.params['test_output_dir'], "reconstructions")
             comparison_dir = os.path.join(self.params['test_output_dir'], "side-by-side")
@@ -320,7 +285,7 @@ class VAEXperiment(pl.LightningModule):
             total_loss = data['total_loss']
             
             # Save individual images if needed
-            if not self.params['side_by_side_only']:
+            if self.params['extra_image_outputs']:
                 vutils.save_image(original.data,
                                   os.path.join(original_dir, f"{img_idx}.png"),
                                   normalize=True)
@@ -339,11 +304,11 @@ class VAEXperiment(pl.LightningModule):
 
         print(f"Saved {len(self.test_data)} annotated images.")
         print(f"Side-by-side comparisons saved to: {comparison_dir}")
-        if not self.params['side_by_side_only']:
+        if self.params['extra_image_outputs']:
             print(f"Individual original images saved to: {original_dir}")
             print(f"Individual reconstructed images saved to: {recon_dir}")
 
-        if self.params.get('save_samples', False):
+        if self.params['extra_image_outputs']:
             self.generate_random_samples()
 
         # Clean up stored data

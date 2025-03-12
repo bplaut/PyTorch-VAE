@@ -30,10 +30,10 @@ def parse_args():
                         help='Path to the config directory (default: configs)')
     parser.add_argument('-n', '--checkpoint_name', type=str, default='last.ckpt',
                         help='Checkpoint filename to use (default: last.ckpt)')
-    parser.add_argument('-s', '--side_by_side_only', action='store_true',help='Only save side-by-side images', default=False)
+    parser.add_argument('-e', '--extra_image_outputs', action='store_true', help='Output samples and individual reconstructions in addition to side-by-side comparisons', default=False)
     parser.add_argument('-o', '--output_dir', type=str, default='test_outputs', help='Directory to save test outputs')
-    parser.add_argument('-a', '--annotate_loss', action='store_true', help='Annotate the output images with the loss', default=False)
     parser.add_argument('-u', '--cleanup', action='store_true', help='Delete the output directory after running tests', default=False)
+    parser.add_argument('-a', '--dont_annotate_loss', action='store_true', help='Annotate the output images with the loss', default=False)
     parser.add_argument('-g', '--histogram_only', action='store_true', help='Only save histogram images in test', default=False)
     return parser.parse_args()
 
@@ -92,10 +92,10 @@ def run_test(model_info, args, test_dataset, idx=None, total=None):
         "--trained_model_path", model_info['checkpoint_path'],
         "--test_output_dir", args.output_dir,
     ]
-    if args.side_by_side_only:
-        cmd.append("--side_by_side_only")
-    if args.annotate_loss:
-        cmd.append("--annotate_loss")
+    if args.extra_image_outputs:
+        cmd.append("--extra_image_outputs")
+    if args.dont_annotate_loss:
+        cmd.append("--dont_annotate_loss")
     if args.histogram_only:
         cmd.append("--histogram_only")
     
