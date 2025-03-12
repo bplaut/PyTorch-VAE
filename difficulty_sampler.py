@@ -38,5 +38,8 @@ class ImgDifficultySampler(Sampler):
             for idx, loss in zip(indices, losses):
                 img_counts[idx] += 1
                 self.img_losses[idx] = (self.img_losses[idx] * (img_counts[idx] - 1) + loss) / img_counts[idx]
+            # print image with highest loss (among those that were sampled)
+            max_loss_idx = np.argmax(self.img_losses[img_counts > 0])
+            print(f"Image with highest loss:  idx={max_loss_idx}, loss={self.img_losses[max_loss_idx]:.4f}")
             print("New img weights:  min={:.4f}, max={:.4f}, median={:.4f}, mean={:.4f}, std={:.4f}\n".format(np.min(100 * self.img_losses), np.max(100 * self.img_losses), np.median(100 * self.img_losses), np.mean(100 * self.img_losses), np.std(100 * self.img_losses)))
 

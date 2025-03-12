@@ -20,7 +20,6 @@ class MyDataset(Dataset):
         
         if split == 'train':
             self.images = all_images[:int(len(all_images) * train_ratio)]
-            random.shuffle(self.images)
         else:
             self.images = all_images[int(len(all_images) * train_ratio):]
         print(f"Loaded {len(self.images)} images from {data_dir} for {split} split.")
