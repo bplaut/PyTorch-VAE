@@ -9,10 +9,8 @@ class ImgDifficultySampler(Sampler):
     def __init__(self, dataset_size, batch_size):
         self.dataset_size = dataset_size
         self.batch_size = batch_size
-        self.epoch = 0
-        
-        # Initialize equal weights for all imgs
-        self.img_losses = np.ones(dataset_size)
+        self.epoch = 0        
+        self.img_losses = np.ones(dataset_size) # Initialize equal weights for all imgs
             
     def __iter__(self):
         probs = self.img_losses / np.sum(self.img_losses)
@@ -27,7 +25,7 @@ class ImgDifficultySampler(Sampler):
     def update_img_difficulties(self, indices, losses):
         print("\nNum of unique imgs sampled this epoch:  ", len(set(indices)))
         self.epoch += 1
-        
+
         num_epochs_until_reset = 15
         if self.epoch % num_epochs_until_reset == 0:
             self.img_losses = np.ones(self.dataset_size)
@@ -40,6 +38,5 @@ class ImgDifficultySampler(Sampler):
                 self.img_losses[idx] = (self.img_losses[idx] * (img_counts[idx] - 1) + loss) / img_counts[idx]
             # print image with highest loss (among those that were sampled)
             max_loss_idx = np.argmax(self.img_losses[img_counts > 0])
-            print(f"Image with highest loss:  idx={max_loss_idx}, loss={self.img_losses[max_loss_idx]:.4f}")
             print("New img weights:  min={:.4f}, max={:.4f}, median={:.4f}, mean={:.4f}, std={:.4f}\n".format(np.min(100 * self.img_losses), np.max(100 * self.img_losses), np.median(100 * self.img_losses), np.mean(100 * self.img_losses), np.std(100 * self.img_losses)))
 
