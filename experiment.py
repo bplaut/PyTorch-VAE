@@ -84,7 +84,6 @@ class VAEXperiment(pl.LightningModule):
 
         metrics = self.trainer.callback_metrics
         print("\n" + "-" * 50)
-        print(f"Epoch {self.current_epoch}:")
         print(f"Training total Loss: {metrics['loss']:.5f}")
         # If we only have reconstruction loss, no need to print stuff separately
         if not math.isclose(metrics['Reconstruction_Loss'], metrics['loss']):
