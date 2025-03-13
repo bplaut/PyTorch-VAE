@@ -28,7 +28,7 @@ class PureAE(BaseVAE):
             hidden_dims = [32, 64, 128, 256, 512]
         print("Hidden dims: ", hidden_dims)
         self.last_dim = hidden_dims[-1]
-        strides = [2, 2, 2, 2, 2] + [1] * (len(hidden_dims) - 5) # Five layers with stride 2, rest with stride 1
+        strides = [2, 2, 2, 2, 2] + [1] * (len(hidden_dims) - 5) # Five layers with stride 2, rest with stride 1. Note: performance was poor when I tried >5 layers, not sure why. Could be something to experiment with.
         output_padding = lambda stride: 1 if stride > 1 else 0
         # Build Encoder
         for i, h_dim in enumerate(hidden_dims):
