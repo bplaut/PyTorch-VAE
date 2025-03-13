@@ -17,18 +17,21 @@ class PureAE(BaseVAE):
                  latent_dim: int,
                  hidden_dims: List = None,
                  use_vgg: bool = False,
+                 center_focus_sigma: float = None,  # If provided, will use center-weighted loss
                  **kwargs) -> None:
         super(PureAE, self).__init__()
 
         self.latent_dim = latent_dim
         self.use_vgg = use_vgg
+        self.center_focus_sigma = center_focus_sigma
+        self.center_weight_mask = None
 
         modules = []
         if hidden_dims is None:
             hidden_dims = [32, 64, 128, 256, 512]
         print("Hidden dims: ", hidden_dims)
         self.last_dim = hidden_dims[-1]
-        strides = [2, 2, 2, 2, 2] + [1] * (len(hidden_dims) - 5) # Five layers with stride 2, rest with stride 1. Note: performance was poor when I tried >5 layers, not sure why. Could be something to experiment with.
+        strides = [2, 2, 2, 2, 2] + [1] * (len(hidden_dims) - 5) # Five layers with stride 2, rest with stride 1
         output_padding = lambda stride: 1 if stride > 1 else 0
         # Build Encoder
         for i, h_dim in enumerate(hidden_dims):
@@ -84,6 +87,59 @@ class PureAE(BaseVAE):
                 param.requires_grad = False
             self.feature_network.eval()
             
+    def create_center_weight_mask(self, height, width, device):
+        """
+        Creates a Gaussian weighting mask that emphasizes the center of the image.
+        
+        Args:
+            height: Height of the image
+            width: Width of the image
+            device: Device to place the tensor on
+            
+        Returns:
+            Tensor of shape [1, 1, height, width] with highest weights at center
+        """
+        # Create coordinate grids
+        y_coords = torch.arange(height, device=device).float()
+        x_coords = torch.arange(width, device=device).float()
+        y_grid, x_grid = torch.meshgrid(y_coords, x_coords, indexing='ij')
+        
+        # Center coordinates
+        y_center = (height - 1) / 2
+        x_center = (width - 1) / 2
+        
+        # Compute Gaussian weights based on distance from center
+        squared_dist = (y_grid - y_center)**2 + (x_grid - x_center)**2
+        weights = torch.exp(-squared_dist / (2 * self.center_focus_sigma**2))
+        
+        # Normalize weights so the average weight is 1.0
+        # This ensures the overall loss magnitude stays similar
+        weights = weights * (height * width / weights.sum())
+        
+        # Add dimensions for batch and channel broadcasting
+        return weights.unsqueeze(0).unsqueeze(0)
+    
+    def weighted_mse_loss(self, input, target, weight_mask):
+        """
+        Computes MSE loss with spatial weighting that prioritizes the center.
+        
+        Args:
+            input: Predicted image tensor [B, C, H, W]
+            target: Target image tensor [B, C, H, W]
+            weight_mask: Weight mask tensor [1, 1, H, W]
+            
+        Returns:
+            Weighted MSE loss
+        """
+        # Element-wise squared error
+        squared_diff = (input - target)**2
+        
+        # Expand mask to match input dimensions
+        expanded_mask = weight_mask.expand(input.size(0), input.size(1), -1, -1)
+        
+        # Apply weights and calculate mean
+        return (squared_diff * expanded_mask).mean()
+    
     def encode(self, input: Tensor) -> Tensor:
         """
         Encodes the input by passing through the encoder network
@@ -149,9 +205,7 @@ class PureAE(BaseVAE):
 
         return features    
 
-    def loss_function(self,
-                      *args,
-                      **kwargs) -> dict:
+    def loss_function(self, *args, **kwargs) -> dict:
         """
         Computes the AE loss function.
         :param args: [reconstructed_image, original_image, dummy1, dummy2]
@@ -163,8 +217,18 @@ class PureAE(BaseVAE):
         recons_features = args[2]
         input_features = args[3]
         
-        # Simple MSE pixel loss
-        recons_loss = F.mse_loss(recons, input)
+        # Initialize or update center weight mask if using center-weighted loss
+        if self.center_focus_sigma is not None:
+            height, width = input.shape[2], input.shape[3]
+            
+            # Create mask if it doesn't exist, then save it for later so we don't have to recreate it
+            if self.center_weight_mask is None:
+                self.center_weight_mask = self.create_center_weight_mask(height, width, input.device)
+                
+            recons_loss = self.weighted_mse_loss(recons, input, self.center_weight_mask)
+        else:
+            # Standard MSE loss
+            recons_loss = F.mse_loss(recons, input)
 
         # VGG loss
         feature_loss = torch.tensor(0.0).to(recons.device)
