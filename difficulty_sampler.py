@@ -28,7 +28,8 @@ class ImgDifficultySampler(Sampler):
 
         num_epochs_until_reset = 15
         if self.epoch % num_epochs_until_reset == 0:
-            self.img_losses = np.ones(self.dataset_size)
+            # reset all weights to be equal to the average loss from last epoch
+            self.img_losses = np.ones(self.dataset_size) * np.mean(losses)
             print(f"{num_epochs_until_reset} epochs have passed, resetting image weights\n")
         else:
             img_counts = np.zeros(self.dataset_size, dtype=np.int32)
