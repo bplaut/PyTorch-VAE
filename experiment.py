@@ -318,7 +318,7 @@ class VAEXperiment(pl.LightningModule):
     def save_loss_histogram(self):
         """
         Generate and save a histogram of total reconstruction error across individual frames
-        with vertical lines at 50th, 75th, 90th, and 95th percentiles
+        with vertical lines at 50th, 75th, 90th, and 95th percentiles, and the mean
         """
 
         # Create directory for histogram
@@ -331,6 +331,7 @@ class VAEXperiment(pl.LightningModule):
         # Calculate percentiles
         percentiles = [50, 75, 90, 95]
         percentile_values = np.percentile(total_losses, percentiles)
+        mean = np.mean(total_losses)
 
         # Create histogram
         plt.figure(figsize=(10, 6))
@@ -345,6 +346,8 @@ class VAEXperiment(pl.LightningModule):
         for i, (percentile, value) in enumerate(zip(percentiles, percentile_values)):
             plt.axvline(x=value, color=colors[i], linestyle='--', 
                        label=f'{percentile}th percentile: {value:.4f}')
+        mean_color = 'black'
+        plt.axvline(x=mean, color=mean_color, linestyle='-', label=f'Mean: {mean:.4f}')
 
         plt.legend()
 
