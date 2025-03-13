@@ -98,7 +98,7 @@ if args.test_dataset is not None:
     print(f"----\nTesting {exp_name}\n----")
     runner.test(experiment, datamodule=data, ckpt_path=checkpoint_path, verbose=False)
     # Make gifs of side-by-side images
-    test_output_dir = os.path.join(args.test_output_dir, exp_name) if args.side_by_side_only else os.path.join(args.test_output_dir, exp_name, 'side-by-side')
+    test_output_dir = os.path.join(args.test_output_dir, exp_name, 'side-by-side') if args.extra_image_output else os.path.join(args.test_output_dir, exp_name)
     if not args.histogram_only:
         make_tex(test_output_dir, exp_name + '.tex')
         # Compile the tex file. For some reason we need to do it twice to make the gifs work
