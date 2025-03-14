@@ -36,11 +36,6 @@ with open(args.filename, 'r') as file:
     except yaml.YAMLError as exc:
         print(exc)
 
-# print args:
-print("Arguments:")
-for arg in vars(args):
-    print(f"\t{arg}: {getattr(args, arg)}")
-
 # Setup up parameters
 if args.train_dataset is None and args.test_dataset is None:
     raise ValueError("At least one of train_dataset and test_dataset must be provided")
@@ -57,6 +52,12 @@ if args.trained_model_path is None:
 if args.test_dataset is not None:
     exp_name += f"-test_{args.test_dataset}"
 config['exp_params']['test_output_dir'] = os.path.join(args.test_output_dir, exp_name)
+
+# print config
+for key, value in config.items():
+    print(f"{key}:")
+    for subkey, subvalue in value.items():
+        print(f"\t{subkey}: {subvalue}")
 
 # Set up main stuff
 tb_logger = TensorBoardLogger(save_dir=config['logging_params']['save_dir'],
