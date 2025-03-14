@@ -23,7 +23,8 @@ def find_versions_with_most_epochs(root_dir):
                         file_count = len(filenames)
                     else:
                         file_count = len([f for f in filenames if "highest" in f]) # This directory has two files per epoch: highest and lowest
-                    model_data[model_name][version_name] = file_count
+                    if file_count > model_data.get(model_name, {}).get(version_name, 0):
+                        model_data[model_name][version_name] = file_count
     
     # Find the version with most files for each model
     results = {}
