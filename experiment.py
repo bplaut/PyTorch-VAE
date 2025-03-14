@@ -118,7 +118,7 @@ class VAEXperiment(pl.LightningModule):
                 comparison = self.create_side_by_side_image(img_resized, recon_resized, loss_val, norm_loss)
                 comparison.save(os.path.join(
                     comparisons_dir, 
-                    f"epoch_{self.current_epoch}_{key}_loss_{loss_val:.3f}_idx_{data['idx']}.png"
+                    f"epoch_{self.current_epoch}_{key}_idx_{data['idx']}.png"
                 ))
         
         self.reset_extreme_image_tracking()
