@@ -3,7 +3,7 @@
 # Function to print usage information
 usage() {
     echo "Usage: $0 train_dataset \"latent_dim1 latent_dim2 ...\" config"
-    echo "Example: $0 coinrun \"128 256 512\" configs/vae.yaml"
+    echo "Example: $0 coinrun \"128 256 512\" pure_ae.yaml"
     exit 1
 }
 
@@ -16,6 +16,7 @@ fi
 train_dataset=$1
 latent_dims=($2)  # Convert space-separated string to array
 config=$3
+config_path="configs/$config"
 
 # Validate inputs
 if [ ${#latent_dims[@]} -eq 0 ]; then
@@ -45,8 +46,9 @@ fi
 for latent_dim in "${latent_dims[@]}"; do
     echo "Submitting job: train_dataset=$train_dataset, latent_dim=$latent_dim"
         
+    exp_name="$config-$latent_dim-$train_dataset"
     # Submit the job using sbatch and capture the job ID
-    job_id=$(sbatch --parsable train_slurm.sh "$train_dataset" "$latent_dim" "$config")
+    job_id=$(sbatch --parsable --output=output_from_slurm/$exp_name.out train_slurm.sh "$train_dataset" "$latent_dim" "$config_path")
     
     if [ $? -eq 0 ]; then
         echo "Successfully submitted job $job_id"
