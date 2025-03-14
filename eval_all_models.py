@@ -29,8 +29,8 @@ def parse_args():
                         help='Path to the directory containing trained models (default: trained_models)')
     parser.add_argument('-c', '--config_dir', type=str, default='configs',
                         help='Path to the config directory (default: configs)')
-    parser.add_argument('-n', '--checkpoint_name', type=str, default='last.ckpt',
-                        help='Checkpoint filename to use (default: last.ckpt)')
+    parser.add_argument('-n', '--checkpoint_name', type=str, default='best.ckpt',
+                        help='Checkpoint filename to use (default: best.ckpt)')
     parser.add_argument('-e', '--extra_image_outputs', action='store_true', help='Output samples and individual reconstructions in addition to side-by-side comparisons', default=False)
     parser.add_argument('-o', '--output_dir', type=str, default='test_outputs', help='Directory to save test outputs')
     parser.add_argument('-u', '--cleanup', action='store_true', help='Delete the output directory after running tests', default=False)
@@ -67,10 +67,17 @@ def find_trained_models(models_dir, checkpoint_name):
         version_dir = sorted(version_dirs)[-1]
         
         # Check for checkpoint
-        checkpoint_path = version_dir / "checkpoints" / checkpoint_name
-        if not checkpoint_path.exists():
-            print(f"Checkpoint {checkpoint_name} not found for model: {model_dir}")
-            continue
+        checkpoint_path1 = version_dir / "checkpoints" / checkpoint_name
+        checkpoint_path2 = version_dir / "checkpoints" / "last.ckpt"
+        if checkpoint_path1.exists():
+            checkpoint_path = checkpoint_path1
+        else:
+            print(f"Checkpoint {checkpoint_name} not found for model: {model_dir}. Looking for last.ckpt")
+            if checkpoint_path2.exists():
+                checkpoint_path = checkpoint_path2
+            else:
+                print(f"Checkpoint last.ckpt not found for model: {model_dir}. Skipping model")
+                continue
             
         trained_models.append({
             'model_type': model_type,
