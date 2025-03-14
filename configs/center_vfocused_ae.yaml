@@ -1,0 +1,29 @@
+model_params:
+  name: 'PureAE'
+  in_channels: 3
+  latent_dim: 128
+  hidden_dims: [128, 256, 512, 1024, 2048]
+  center_focus_sigma: 7
+
+data_params:
+  data_path: "Data/"
+  train_batch_size: 64
+  val_batch_size:  64
+  patch_size: 64
+  num_workers: 4
+
+exp_params:
+  LR: 0.0005
+  kld_weight: 0 # pure AE ignores this but we include it for completeness
+  weight_decay: 0.0
+  scheduler_gamma: 0.98
+  manual_seed: 1265
+
+trainer_params:
+  gpus: [0]
+  max_epochs: 400
+
+logging_params:
+  save_dir: "logs/"
+  name: "CenterVFocusedAE"
+  
