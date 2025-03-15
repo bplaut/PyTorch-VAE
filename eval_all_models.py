@@ -29,8 +29,8 @@ def parse_args():
                         help='List of test datasets to evaluate models on')
     parser.add_argument('-m', '--models_dir', type=str, default='trained_models',
                         help='Path to the directory containing trained models (default: trained_models)')
-    parser.add_argument('-c', '--config_dir', type=str, default='configs',
-                        help='Path to the config directory (default: configs)')
+    parser.add_argument('-c', '--config', type=str, default=None,
+                        help='Path to the config file. Default is to use whatever config is based on the model name (which is what you should nearly all of the time)')
     parser.add_argument('-n', '--checkpoint_name', type=str, default='best.ckpt',
                         help='Checkpoint filename to use (default: best.ckpt)')
     parser.add_argument('-e', '--extra_image_outputs', action='store_true', help='Output samples and individual reconstructions in addition to side-by-side comparisons', default=False)
@@ -93,9 +93,10 @@ def find_trained_models(models_dir, checkpoint_name):
     return trained_models
 
 def run_test(model_info, args, test_dataset, idx=None, total=None):
+    config_file = args.config if args.config is not None else os.path.join('configs', config_map[model_info['model_type']])
     cmd = [
         "python", "run.py",
-        "--config", os.path.join(args.config_dir, config_map[model_info['model_type']]),
+        "--config", config_file,
         "--test_dataset", test_dataset,
         "--latent_dim", model_info['latent_dim'],
         "--kl_penalty", model_info['kl_penalty'],
