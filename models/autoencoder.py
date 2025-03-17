@@ -18,6 +18,7 @@ class Autoencoder(BaseVAE):
                  hidden_dims: List = None,
                  use_vgg: bool = False,
                  center_focus_sigma: float = None,  # If provided, will use center-weighted loss
+                 use_skip_connections: bool = False,
                  **kwargs) -> None:
         super(Autoencoder, self).__init__()
 
@@ -25,6 +26,7 @@ class Autoencoder(BaseVAE):
         self.use_vgg = use_vgg
         self.center_focus_sigma = center_focus_sigma
         self.center_weight_mask = None
+        self.use_skip_connections = use_skip_connections
 
         modules = []
         if hidden_dims is None:
@@ -170,8 +172,42 @@ class Autoencoder(BaseVAE):
         return result
 
     def forward(self, input: Tensor, **kwargs) -> List[Tensor]:
-        z = self.encode(input)[0]  # Get first (only) element from encode output
-        recons = self.decode(z)
+        if not self.use_skip_connections:
+            z = self.encode(input)[0]
+            recons = self.decode(z)
+        else:
+            # Capture encoder outputs
+            encoder_outputs = []
+            x = input
+
+            # Run through encoder, saving intermediate outputs
+            for layer in self.encoder:
+                x = layer(x)
+                encoder_outputs.append(x)
+
+            # Flatten and project to latent space
+            z_flat = torch.flatten(x, start_dim=1)
+            z = self.fc(z_flat)
+
+            # Start decoding
+            x = self.decoder_input(z)
+            x = x.view(-1, self.last_dim, 2, 2)
+
+            # Apply decoder with fixed skip connections
+            # Assume encoder and decoder have same number of layers (reversed in decoder)
+            for i, layer in enumerate(self.decoder):
+                x = layer(x)
+
+                # Connect to corresponding encoder layer (in reverse order)
+                # Skip the earliest encoder layers if there are too many
+                skip_idx = len(encoder_outputs) - i - 1
+                if skip_idx >= 0 and x.shape[2:] == encoder_outputs[skip_idx].shape[2:]:
+                    # Simple residual connection - just add the features
+                    # (assumes channels already match or don't need to match perfectly)
+                    x = x + encoder_outputs[skip_idx]
+
+            # Final layer
+            recons = self.final_layer(x)
 
         if self.use_vgg:
             input_features = self.extract_features(input)
@@ -181,9 +217,7 @@ class Autoencoder(BaseVAE):
             recons_features = torch.zeros_like(z)
         return [recons, input, recons_features, input_features]
 
-    def extract_features(self,
-                         input: Tensor,
-                         feature_layers: List = None) -> List[Tensor]:
+    def extract_features(self, input: Tensor, feature_layers: List = None) -> List[Tensor]:
         """                                                                                                
         Extracts the features from the pretrained model    
         at the layers indicated by feature_layers.
