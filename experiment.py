@@ -191,10 +191,7 @@ class VAEXperiment(pl.LightningModule):
             # Scale losses by 1000 for readability
             total_loss = single_loss['loss'].item() * 1000
             recon_loss = single_loss['Reconstruction_Loss'].item() * 1000
-            if 'feature_loss' in single_loss:
-                feature_loss = single_loss['feature_loss'].item() * 1000
-            else:
-                feature_loss = None
+            feature_loss = single_loss['feature_loss'].item() * 1000 if 'feature_loss' in single_loss else None
 
             # Update global min/max values
             self.loss_stats['total_loss']['min'] = min(self.loss_stats['total_loss']['min'], total_loss)
