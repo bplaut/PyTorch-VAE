@@ -21,7 +21,7 @@ exp_params:
 
 trainer_params:
   gpus: [0]
-  max_epochs: 400
+  max_epochs: 200
   replace_sampler_ddp: False
 
 logging_params:
