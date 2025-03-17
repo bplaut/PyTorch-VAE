@@ -3,7 +3,7 @@
 # Function to print usage information
 usage() {
     echo "Usage: $0 train_dataset \"latent_dim1 latent_dim2 ...\" config"
-    echo "Example: $0 coinrun \"128 256 512\" pure_ae.yaml"
+    echo "Example: $0 coinrun \"512 1024 2048\" base_ae.yaml"
     exit 1
 }
 
