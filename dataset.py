@@ -1,8 +1,8 @@
 import os
+import re
 import torch
 import random
 from torch import Tensor
-from pathlib import Path
 from typing import List, Optional, Sequence, Union, Any, Callable
 from torchvision.datasets.folder import default_loader
 from pytorch_lightning import LightningDataModule
@@ -16,7 +16,7 @@ class MyDataset(Dataset):
         self.transform = transform
         self.split = split
         
-        all_images = sorted([f for f in Path(data_dir).iterdir() if f.suffix in ['.jpg', '.png']], key=lambda x: int(x.stem))
+        all_images = self.sort_images([os.path.join(data_dir, f) for f in os.listdir(data_dir) if f.endswith('.png')])
         
         if split == 'train':
             self.images = all_images[:int(len(all_images) * train_ratio)]
@@ -35,7 +35,35 @@ class MyDataset(Dataset):
             img = self.transform(img)
         
         return img, 0.0, idx # img, dummy label, idx
-    
+
+    def sort_images(self, img_paths):
+        """
+        Sort image files in a directory:
+        - Simple filenames (e.g., '5.png') come first, sorted numerically
+        - Complex filenames sorted by run-id, then iter, then env, then step
+        """
+        # Regex pattern for simple filenames (e.g., "5.png")
+        simple_pattern = re.compile(r'^(\d+)\.png$')
+
+        # Regex pattern for complex filenames with named groups
+        complex_pattern = re.compile(r'iter(\d+).*?env(\d+).*?step(\d+).*?run-id(\d+)')
+
+        def get_sort_key(filepath):
+            filename = os.path.basename(filepath)
+            simple_match = simple_pattern.match(filename)
+            complex_match = complex_pattern.search(filename)
+            if simple_match:
+                return (0, int(simple_match.group(1)))
+            elif complex_match:
+                run_id = int(complex_match.group(4))
+                iter_num = int(complex_match.group(1))
+                env_num = int(complex_match.group(2))
+                step_num = int(complex_match.group(3))
+                return (1, run_id, iter_num, env_num, step_num)
+            else:
+                raise ValueError(f"Filename {filename} is in the wrong format")
+        return sorted(img_paths, key=get_sort_key)
+
 class VAEDataset(LightningDataModule):
     """
     PyTorch Lightning data module 
