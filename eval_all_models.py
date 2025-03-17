@@ -7,7 +7,7 @@ import re
 config_map = {'VanillaVAE':'vae.yaml',
               'MIWAE':'miwae.yaml',
               'DFCVAE':'dfc_vae.yaml',
-              'PureAE':'pure_ae.yaml',
+              'BaseAE':'base_ae.yaml',
               'BigAE':'big_ae.yaml',
               'VGGAE':'vgg_ae.yaml',
               'AdaptiveAE':'adaptive_lr_ae.yaml',

@@ -1,5 +1,5 @@
 model_params:
-  name: 'PureAE'
+  name: 'Autoencoder'
   in_channels: 3
   latent_dim: 128
   hidden_dims: [256, 512, 1024, 2048, 4096]

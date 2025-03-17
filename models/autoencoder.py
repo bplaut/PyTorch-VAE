@@ -5,7 +5,7 @@ from torch.nn import functional as F
 from torchvision.models import vgg19_bn
 from .types_ import *
 
-class PureAE(BaseVAE):
+class Autoencoder(BaseVAE):
     """
     A basic Autoencoder model that inherits from BaseVAE to maintain compatibility
     with the existing framework. Unlike VAEs, there's no KL divergence or 
@@ -19,7 +19,7 @@ class PureAE(BaseVAE):
                  use_vgg: bool = False,
                  center_focus_sigma: float = None,  # If provided, will use center-weighted loss
                  **kwargs) -> None:
-        super(PureAE, self).__init__()
+        super(Autoencoder, self).__init__()
 
         self.latent_dim = latent_dim
         self.use_vgg = use_vgg

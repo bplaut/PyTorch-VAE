@@ -1,4 +1,7 @@
 from .base import *
+from .autoencoder import * # We're mostly using the pure autoencoder
+
+# The original repo I forked had all of these other VAE models that we're keeping because why not
 from .vanilla_vae import *
 from .gamma_vae import *
 from .beta_vae import *
@@ -13,7 +16,7 @@ from .fvae import *
 from .cat_vae import *
 from .joint_vae import *
 from .info_vae import *
-# from .twostage_vae import *
+from .twostage_vae import *
 from .lvae import LVAE
 from .logcosh_vae import *
 from .swae import *
@@ -21,7 +24,6 @@ from .miwae import *
 from .vq_vae import *
 from .betatc_vae import *
 from .dip_vae import *
-from .pure_ae import *
 
 
 # Aliases
@@ -47,7 +49,7 @@ vae_models = {'HVAE':HVAE,
               'JointVAE':JointVAE,
               'BetaTCVAE':BetaTCVAE,
               'FactorVAE':FactorVAE,
-              'PureAE':PureAE,
+              'Autoencoder':Autoencoder,
               'LogCoshVAE':LogCoshVAE,
               'VanillaVAE':VanillaVAE,
               'ConditionalVAE':ConditionalVAE,
