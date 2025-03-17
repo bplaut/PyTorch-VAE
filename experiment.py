@@ -9,11 +9,8 @@ import pytorch_lightning as pl
 from torchvision import transforms
 import torchvision.utils as vutils
 import torch.nn.functional as F
-from torchvision.datasets import CelebA
 from torch.utils.data import DataLoader
-import numpy as np
-import matplotlib.pyplot as plt
-from PIL import Image, ImageDraw, ImageFont
+import draw
 
 
 class VAEXperiment(pl.LightningModule):
@@ -115,7 +112,7 @@ class VAEXperiment(pl.LightningModule):
                 # Scale loss for readability
                 loss_val = data['loss'] * 1000
                 norm_loss = 0 if key == 'lowest' else 1
-                comparison = self.create_side_by_side_image(img_resized, recon_resized, loss_val, norm_loss)
+                comparison = draw.create_side_by_side_image(self.params, img_resized, recon_resized, loss_val, norm_loss)
                 comparison.save(os.path.join(
                     comparisons_dir, 
                     f"epoch_{self.current_epoch}_{key}_idx_{data['idx']}.png"
@@ -226,37 +223,6 @@ class VAEXperiment(pl.LightningModule):
 
         return test_loss
 
-    def create_side_by_side_image(self, original, reconstruction, total_loss, total_norm_loss):
-        """
-        Create a side-by-side comparison of original and reconstructed images with loss annotation.
-        
-        Args:
-            original: Original image tensor
-            reconstruction: Reconstructed image tensor
-            total_loss: Loss value
-            total_norm_loss: Normalized loss (0-1). If None, will be calculated using global min/max if available.
-            
-        Returns:
-            PIL Image with side-by-side comparison and annotations
-        """
-        # Create side-by-side comparison
-        comparison = torch.cat([original, reconstruction], dim=3)
-        
-        # Convert to PIL for annotation
-        comparison_np = comparison.numpy()
-        comparison_np = np.transpose(comparison_np[0], (1, 2, 0))
-        comparison_np = (comparison_np - comparison_np.min()) / (comparison_np.max() - comparison_np.min()) * 255.0
-        comparison_pil = Image.fromarray(comparison_np.astype(np.uint8))
-        
-        
-        # Create annotated image if requested
-        if self.params['dont_annotate_loss']:
-            final_img = comparison_pil
-        else:
-            final_img = self.create_annotated_image(comparison_pil, total_loss, total_norm_loss)
-        
-        return final_img
-
     def on_test_end(self):
         """
         Function called at the end of test to save all images
@@ -272,7 +238,7 @@ class VAEXperiment(pl.LightningModule):
         os.makedirs(comparison_dir, exist_ok=True)
 
         print("Saving histogram...")
-        self.save_loss_histogram()
+        draw.save_loss_histogram(self.params, self.test_data)
         if self.params['histogram_only']:
             print("Skipping image saving as requested.")
             return
@@ -293,11 +259,8 @@ class VAEXperiment(pl.LightningModule):
                                   os.path.join(recon_dir, f"{img_idx}.png"),
                                   normalize=True)
 
-            # Normalize the loss value
-            total_norm_loss = self.normalize_loss(total_loss, 'total_loss')
-            
-            # Create side-by-side comparison using the helper function
-            final_img = self.create_side_by_side_image(original, reconstruction, total_loss, total_norm_loss)
+            total_norm_loss = self.normalize_loss(total_loss, 'total_loss')            
+            final_img = draw.create_side_by_side_image(self.params, original, reconstruction, total_loss, total_norm_loss)
             
             # Save the comparison
             final_img.save(os.path.join(comparison_dir, f"{img_idx}.png"))
@@ -315,145 +278,6 @@ class VAEXperiment(pl.LightningModule):
         delattr(self, 'test_data')
         delattr(self, 'loss_stats')
         
-    def save_loss_histogram(self):
-        """
-        Generate and save a histogram of total reconstruction error across individual frames
-        with vertical lines at 50th, 75th, 90th, and 95th percentiles, and the mean
-        """
-
-        # Create directory for histogram
-        histogram_dir = os.path.join(self.params['test_output_dir'], "histograms")
-        os.makedirs(histogram_dir, exist_ok=True)
-
-        # Extract total losses from test data
-        total_losses = [data['total_loss'] for data in self.test_data]
-
-        # Calculate percentiles
-        percentiles = [50, 75, 90, 95]
-        percentile_values = np.percentile(total_losses, percentiles)
-        mean = np.mean(total_losses)
-
-        # Create histogram
-        plt.figure(figsize=(10, 6))
-        plt.hist(total_losses, bins=40, alpha=0.8, color='blue')
-        plt.title('Histogram of loss across time steps')
-        plt.xlabel('Loss (x1000)')
-        plt.ylabel('Frequency')
-        plt.grid(True, alpha=0.3)
-
-        # Add vertical lines for percentiles
-        colors = ['green', 'orange', 'purple', 'red']
-        for i, (percentile, value) in enumerate(zip(percentiles, percentile_values)):
-            plt.axvline(x=value, color=colors[i], linestyle='--', 
-                       label=f'{percentile}th percentile: {value:.4f}')
-        mean_color = 'black'
-        plt.axvline(x=mean, color=mean_color, linestyle='-', label=f'Mean: {mean:.4f}')
-
-        plt.legend()
-
-        # Save the histogram
-        last_sep = self.params['test_output_dir'].rfind('/')
-        overall_output_dir = self.params['test_output_dir'][:last_sep]
-        exp_name = self.params['test_output_dir'][last_sep+1:]
-        histogram_path = os.path.join(overall_output_dir, f"{exp_name}_loss_histogram.png")
-        plt.savefig(histogram_path, dpi=300)
-        plt.close()
-
-        # Calculate and print statistics
-        print("\nTotal Loss Statistics:")
-        print(f"  Mean: {np.mean(total_losses):.4f}")
-        print(f"  Median: {np.median(total_losses):.4f}")
-        print(f"  Std Dev: {np.std(total_losses):.4f}")
-        print(f"  Min: {np.min(total_losses):.4f}")
-        print(f"  Max: {np.max(total_losses):.4f}")
-        print("\nPercentiles:")
-        for percentile, value in zip(percentiles, percentile_values):
-            print(f"  {percentile}th: {value:.4f}")
-
-        print(f"Loss histogram saved to: {histogram_path}")
-    
-    def create_annotated_image(self, comparison_img, loss, norm_loss):
-        img_width, img_height = comparison_img.size
-        header_height = 28  # Adjusted for one line with larger text
-
-        new_img = Image.new('RGB', (img_width, img_height + header_height), color=(240, 240, 240))
-        new_img.paste(comparison_img, (0, header_height))
-
-        draw = ImageDraw.Draw(new_img)
-
-        try:
-            font = ImageFont.truetype("arial.ttf", 15)
-        except IOError:
-            try:
-                font = ImageFont.truetype("DejaVuSans.ttf", 15)
-            except:
-                font = ImageFont.load_default()
-
-        color = self.get_color_from_score(norm_loss)
-
-        text = f"Loss: {loss:.3f} ({int(norm_loss*100)}%)"
-
-        left_margin = img_width // 6
-        draw.text((left_margin, (header_height - 18) // 2), text, fill=color, font=font)
-
-        # Meter bar on the right
-        meter_start_x = img_width // 2 - 15
-        meter_width = img_width // 3 + 15
-        meter_height = 13
-        meter_y = (header_height - meter_height) // 2
-
-        # Background of meter
-        draw.rectangle(
-            [(meter_start_x, meter_y), (meter_start_x + meter_width, meter_y + meter_height)],
-            fill=(220, 220, 220), outline=(180, 180, 180)
-        )
-
-        # Filled part of meter
-        filled_width = int(meter_width * norm_loss)
-        if filled_width > 0:
-            draw.rectangle(
-                [(meter_start_x, meter_y), (meter_start_x + filled_width, meter_y + meter_height)],
-                fill=color
-            )
-
-        return new_img
-
-    def normalize_loss(self, loss_value, loss_type):
-        """
-        Calculate the percentile of a loss value within the distribution
-        """
-        # Extract all values of this loss type from the test data
-        if loss_type == 'total_loss':
-            all_values = [data['total_loss'] for data in self.test_data]
-        elif loss_type == 'recon_loss':
-            all_values = [data['recon_loss'] for data in self.test_data]
-        elif loss_type == 'feature_loss':
-            all_values = [data['feature_loss'] for data in self.test_data if data['feature_loss'] is not None]
-
-        # Calculate the percentile (0 to 1) of this value within the distribution
-        percentile = sum(1 for x in all_values if x <= loss_value) / len(all_values)
-
-        return percentile
-
-    def get_color_from_score(self, percentile):
-        """
-        Map a percentile (0-1) to a color: blue (0) -> purple (0.5) -> red (1)
-        """
-        if percentile < 0.5:
-            # Blue to Purple (0 to 0.5)
-            normalized = percentile * 2  # Scale 0-0.5 to 0-1
-            r = int(128 * normalized)
-            g = 0
-            b = int(255 - 127 * normalized)
-        else:
-            # Purple to Red (0.5 to 1)
-            normalized = (percentile - 0.5) * 2  # Scale 0.5-1 to 0-1
-            r = int(128 + 127 * normalized)
-            g = 0
-            b = int(128 - 128 * normalized)
-
-        return (r, g, b)
-
     def generate_random_samples(self):
         """
         Generate random samples from the latent space
@@ -538,6 +362,23 @@ class VAEXperiment(pl.LightningModule):
                     return optims, scheds
             except:
                 return optims
+
+    def normalize_loss(self, loss_value, loss_type):
+        """
+        Calculate the percentile of a loss value within the distribution
+        """
+        # Extract all values of this loss type from the test data
+        if loss_type == 'total_loss':
+            all_values = [data['total_loss'] for data in self.test_data]
+        elif loss_type == 'recon_loss':
+            all_values = [data['recon_loss'] for data in self.test_data]
+        elif loss_type == 'feature_loss':
+            all_values = [data['feature_loss'] for data in self.test_data if data['feature_loss'] is not None]
+
+        # Calculate the percentile (0 to 1) of this value within the distribution
+        percentile = sum(1 for x in all_values if x <= loss_value) / len(all_values)
+
+        return percentile
 
     def ensure_4_dims(self, t):
         if len(t.shape) != 4:
