@@ -247,17 +247,17 @@ class VAEXperiment(pl.LightningModule):
             # Save individual images if needed
             if self.params['extra_image_outputs']:
                 vutils.save_image(original.data,
-                                  os.path.join(original_dir, f"{img_name}.png"),
+                                  os.path.join(original_dir, f"{img_name}"),
                                   normalize=True)
                 vutils.save_image(reconstruction.data,
-                                  os.path.join(recon_dir, f"{img_name}.png"),
+                                  os.path.join(recon_dir, f"{img_name}"),
                                   normalize=True)
 
             total_norm_loss = self.normalize_loss(total_loss, 'total_loss')            
             final_img = draw.create_side_by_side_image(self.params, original, reconstruction, total_loss, total_norm_loss)
             
             # Save the comparison
-            final_img.save(os.path.join(comparison_dir, f"{img_name}.png"))
+            final_img.save(os.path.join(comparison_dir, f"{img_name}"))
 
         print(f"Saved {len(self.test_data)} annotated images.")
         print(f"Side-by-side comparisons saved to: {comparison_dir}")
