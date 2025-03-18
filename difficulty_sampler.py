@@ -7,6 +7,7 @@ class ImgDifficultySampler(Sampler):
     Sampler that tracks difficulty at the individual img level, rather than at the batch level.
     """
     def __init__(self, dataset_size, batch_size):
+        raise NotImplementedError("This class needs to be modified because update_img_difficulties() now receives a list of image names instead of indices")
         self.dataset_size = dataset_size
         self.batch_size = batch_size
         self.epoch = 0        

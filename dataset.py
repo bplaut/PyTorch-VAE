@@ -34,13 +34,14 @@ class MyDataset(Dataset):
         if self.transform is not None:
             img = self.transform(img)
         
-        return img, 0.0, idx # img, dummy label, idx
+        return img, 0.0, os.path.basename(img_path) # 0.0 is a dummy label
 
     def sort_images(self, img_paths):
         """
         Sort image files in a directory:
-        - Simple filenames (e.g., '5.png') come first, sorted numerically
+        - Simple filenames (e.g., '5.png') are sorted by their integer value
         - Complex filenames sorted by run-id, then iter, then env, then step
+        Theoretically you should never have both simple and complex filenames in the same directory but we handle that just in case.
         """
         # Regex pattern for simple filenames (e.g., "5.png")
         simple_pattern = re.compile(r'^(\d+)\.png$')
@@ -106,7 +107,7 @@ class VAEDataset(LightningDataModule):
         self.train_dataset_name = train_dataset
         self.test_dataset_name = test_dataset
         self.use_difficulty_sampling = use_difficulty_sampling
-        self.sampled_img_indices = []
+        self.sampled_img_names = []
         self.sampled_img_losses = []
 
     def setup(self, stage: Optional[str] = None) -> None:    
@@ -164,16 +165,16 @@ class VAEDataset(LightningDataModule):
             pin_memory=self.pin_memory,
         )
 
-    def record_img_losses(self, indices, losses):
-        if isinstance(indices, torch.Tensor):
-            indices = indices.cpu().tolist()
+    def record_img_losses(self, img_names, losses):
+        if isinstance(img_names, torch.Tensor):
+            img_names = img_names.cpu().tolist()
         if isinstance(losses, torch.Tensor):
             losses = losses.cpu().tolist()
-        self.sampled_img_indices.extend(indices)
+        self.sampled_img_names.extend(img_names)
         self.sampled_img_losses.extend(losses)
     
     def on_epoch_end(self):
         if self.difficulty_sampler is not None:
-            self.difficulty_sampler.update_img_difficulties(self.sampled_img_indices, self.sampled_img_losses)
-            self.sampled_img_indices = []
+            self.difficulty_sampler.update_img_difficulties(self.sampled_img_names, self.sampled_img_losses)
+            self.sampled_img_names = []
             self.sampled_img_losses = []

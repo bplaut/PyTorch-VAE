@@ -38,12 +38,12 @@ class VAEXperiment(pl.LightningModule):
     def reset_extreme_image_tracking(self):
         """Reset tracking of extreme loss images for a new training epoch."""
         self.extreme_images = {
-            'highest': {'loss': float('-inf'), 'img': None, 'idx': None},
-            'lowest': {'loss': float('inf'), 'img': None, 'recon': None, 'idx': None}
+            'highest': {'loss': float('-inf'), 'img': None, 'recon': None, 'name': None},
+            'lowest': {'loss': float('inf'), 'img': None, 'recon': None, 'name': None}
         }
 
     def training_step(self, batch, batch_idx, optimizer_idx = 0):
-        imgs, labels, indices = batch
+        imgs, labels, img_names = batch
         self.curr_device = imgs.device
 
         results = self.forward(imgs, labels = labels)
@@ -60,9 +60,8 @@ class VAEXperiment(pl.LightningModule):
         per_img_loss = F.mse_loss(recon_img, input_img, reduction='none')    
         # Average over all dimensions except batch
         per_img_loss = per_img_loss.mean(dim=[1, 2, 3])  # Average over channels, height, width        
-        self.trainer.datamodule.record_img_losses(indices, per_img_loss.detach().cpu())
+        self.trainer.datamodule.record_img_losses(img_names, per_img_loss.detach().cpu())
         
-        # Track images with extreme losses
         for i in range(len(per_img_loss)):
             loss_val = per_img_loss[i].item()
             
@@ -72,7 +71,7 @@ class VAEXperiment(pl.LightningModule):
                     'loss': loss_val,
                     'img': imgs[i:i+1].detach().cpu(),
                     'recon': recon_img[i:i+1].detach().cpu(),
-                    'idx': indices[i].item()
+                    'name': img_names[i]
                 }
             
             # Check if this is the lowest loss image so far
@@ -81,7 +80,7 @@ class VAEXperiment(pl.LightningModule):
                     'loss': loss_val,
                     'img': imgs[i:i+1].detach().cpu(),
                     'recon': recon_img[i:i+1].detach().cpu(),
-                    'idx': indices[i].item()
+                    'name': img_names[i]
                 }
 
         return train_loss['loss']
@@ -115,7 +114,7 @@ class VAEXperiment(pl.LightningModule):
                 comparison = draw.create_side_by_side_image(self.params, img_resized, recon_resized, loss_val, norm_loss)
                 comparison.save(os.path.join(
                     comparisons_dir, 
-                    f"epoch_{self.current_epoch}_{key}_idx_{data['idx']}.png"
+                    f"epoch_{self.current_epoch}_{key}.png"
                 ))
         
         self.reset_extreme_image_tracking()
@@ -155,7 +154,7 @@ class VAEXperiment(pl.LightningModule):
         print("-" * 50 + "\n")
 
     def test_step(self, batch, batch_idx):
-        imgs, labels, _ = batch
+        imgs, labels, img_names = batch
         self.curr_device = imgs.device
 
         if not hasattr(self, 'test_data'):
@@ -176,8 +175,6 @@ class VAEXperiment(pl.LightningModule):
 
         # Process each image individually and collect data
         for i in range(imgs.size(0)):
-            img_idx = batch_idx * imgs.size(0) + i
-
             single_img = imgs[i:i+1]
             single_label = labels[i:i+1] if labels is not None else None
             single_results = self.forward(single_img, labels=single_label)
@@ -210,7 +207,7 @@ class VAEXperiment(pl.LightningModule):
             )
 
             self.test_data.append({
-                'img_idx': img_idx,
+                'name': img_names[i],
                 'original': original_resized.cpu(),
                 'reconstruction': reconstruction_resized.cpu(),
                 'total_loss': total_loss,
@@ -242,7 +239,7 @@ class VAEXperiment(pl.LightningModule):
         print("Saving reconstructed images...")
 
         for data in self.test_data:
-            img_idx = data['img_idx']
+            img_name = data['name']
             original = data['original']
             reconstruction = data['reconstruction']
             total_loss = data['total_loss']
@@ -250,17 +247,17 @@ class VAEXperiment(pl.LightningModule):
             # Save individual images if needed
             if self.params['extra_image_outputs']:
                 vutils.save_image(original.data,
-                                  os.path.join(original_dir, f"{img_idx}.png"),
+                                  os.path.join(original_dir, f"{img_name}.png"),
                                   normalize=True)
                 vutils.save_image(reconstruction.data,
-                                  os.path.join(recon_dir, f"{img_idx}.png"),
+                                  os.path.join(recon_dir, f"{img_name}.png"),
                                   normalize=True)
 
             total_norm_loss = self.normalize_loss(total_loss, 'total_loss')            
             final_img = draw.create_side_by_side_image(self.params, original, reconstruction, total_loss, total_norm_loss)
             
             # Save the comparison
-            final_img.save(os.path.join(comparison_dir, f"{img_idx}.png"))
+            final_img.save(os.path.join(comparison_dir, f"{img_name}.png"))
 
         print(f"Saved {len(self.test_data)} annotated images.")
         print(f"Side-by-side comparisons saved to: {comparison_dir}")
