@@ -101,7 +101,7 @@ def make_tex(directory_path, output_filename="presentation.tex"):
             shutil.copy2(source_path, copy_path)
         
         # Create a frame for this environment
-        frame_title = f"Environment {env_idx}"
+        frame_title = f"Environment {env_idx + 1}"
         max_frames = 500
         last_frame = min(len(file_list), max_frames) - 1 # -1 because animategraphics is inclusive
         frame_prefix = os.path.join(os.path.basename(directory_path), 'temp_copies', env_subdir)
