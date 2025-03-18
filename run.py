@@ -103,7 +103,9 @@ if args.test_dataset is not None:
     if not args.histogram_only:
         make_tex(test_output_dir, exp_name + '.tex')
         # Compile the tex file. For some reason we need to do it twice to make the gifs work
+        print("First tex compilation...")
         subprocess.run(f"cd {args.test_output_dir}; pdflatex {exp_name}.tex", shell=True, stdout=subprocess.DEVNULL)
+        print("Second tex compilation...")
         subprocess.run(f"cd {args.test_output_dir}; pdflatex {exp_name}.tex", shell=True, stdout=subprocess.DEVNULL) 
 
 # Cleanup
