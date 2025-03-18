@@ -81,8 +81,8 @@ def make_tex(directory_path, output_filename="presentation.tex"):
 \begin{document}
 """
     
-    # Create a temporary directory for symbolic links
-    temp_dir = os.path.join(directory_path, "temp_links")
+    # Create a temporary directory for temporary copies (because animategraphics wants files named something like 0.png, 1.png, etc.)
+    temp_dir = os.path.join(directory_path, "temp_copies")
     os.makedirs(temp_dir, exist_ok=True)
     
     # Create the document body with frames
@@ -95,24 +95,21 @@ def make_tex(directory_path, output_filename="presentation.tex"):
         env_dir_path = os.path.join(temp_dir, env_subdir)
         os.makedirs(env_dir_path, exist_ok=True)
         
-        # Create symbolic links with sequential numbers
         for i, (filename, _) in enumerate(file_list):
             source_path = os.path.join(directory_path, filename)
-            link_name = f"{i}.png"
-            link_path = os.path.join(env_dir_path, link_name)
-            
-            os.symlink(source_path, link_path)
+            copy_path = os.path.join(env_dir_path, f"{i}.png")
+            shutil.copy2(source_path, copy_path)
         
         # Create a frame for this environment
         frame_title = f"Environment {env_idx}"
         max_frames = 500
         last_frame = min(len(file_list), max_frames) - 1 # -1 because animategraphics is inclusive
-        
+        frame_prefix = os.path.join(os.path.basename(directory_path), 'temp_copies', env_subdir)
         frame = f"""
 \\begin{{frame}}
 \\frametitle{{{frame_title}}}
 \\begin{{center}}
-\\animategraphics[loop,controls,autoplay,height=2.1 in]{{\\fps}}{{{env_dir_path}/}}{{0}}{{{last_frame}}}
+\\animategraphics[loop,controls,autoplay,height=2.1 in]{{\\fps}}{{{frame_prefix}/}}{{0}}{{{last_frame}}}
 \\end{{center}}
 \\end{{frame}}
 """
@@ -129,7 +126,7 @@ def make_tex(directory_path, output_filename="presentation.tex"):
     with open(output_path, "w") as f:
         f.write(full_document)
     
-    print(f"Generated {output_path} with {len(env_groups)} environments. Left temp links in {temp_dir}")
+    print(f"Generated {output_path} with {len(env_groups)} environments. Left temporary copies in {temp_dir}")
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
