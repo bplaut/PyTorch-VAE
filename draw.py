@@ -41,10 +41,6 @@ def save_loss_histogram(params, test_data):
     with vertical lines at 50th, 75th, 90th, and 95th percentiles, and the mean
     """
 
-    # Create directory for histogram
-    histogram_dir = os.path.join(params['test_output_dir'], "histograms")
-    os.makedirs(histogram_dir, exist_ok=True)
-
     # Extract total losses from test data
     total_losses = [data['total_loss'] for data in test_data]
 
