@@ -45,6 +45,7 @@ def copy_random_environments(input_dir, output_dir, num_envs, seed=None):
     if num_envs >= len(env_groups):
         raise ValueError(f"Requested {num_envs} environments, but only {len(env_groups)} available")
     else:
+        print(f"Found {len(env_groups)} environments (aka levels)")
         selected_envs = random.sample(list(env_groups.keys()), num_envs)
     
     # Copy all files for the selected environments
