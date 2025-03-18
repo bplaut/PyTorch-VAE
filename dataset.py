@@ -12,17 +12,9 @@ import zipfile
 from difficulty_sampler import ImgDifficultySampler
 
 class MyDataset(Dataset):
-    def __init__(self, data_dir, transform=None, split='train', train_ratio=0.9):
+    def __init__(self, images, transform=None):
         self.transform = transform
-        self.split = split
-        
-        all_images = self.sort_images([os.path.join(data_dir, f) for f in os.listdir(data_dir) if f.endswith('.png')])
-        
-        if split == 'train':
-            self.images = all_images[:int(len(all_images) * train_ratio)]
-        else:
-            self.images = all_images[int(len(all_images) * train_ratio):]
-        print(f"Loaded {len(self.images)} images from {data_dir} for {split} split.")
+        self.images = images
     
     def __len__(self):
         return len(self.images)
@@ -36,34 +28,6 @@ class MyDataset(Dataset):
         
         return img, 0.0, os.path.basename(img_path) # 0.0 is a dummy label
 
-    def sort_images(self, img_paths):
-        """
-        Sort image files in a directory:
-        - Simple filenames (e.g., '5.png') are sorted by their integer value
-        - Complex filenames sorted by run-id, then iter, then env, then step
-        Theoretically you should never have both simple and complex filenames in the same directory but we handle that just in case.
-        """
-        # Regex pattern for simple filenames (e.g., "5.png")
-        simple_pattern = re.compile(r'^(\d+)\.png$')
-
-        # Regex pattern for complex filenames with named groups
-        complex_pattern = re.compile(r'iter(\d+).*?env(\d+).*?step(\d+).*?run-id(\d+)')
-
-        def get_sort_key(filepath):
-            filename = os.path.basename(filepath)
-            simple_match = simple_pattern.match(filename)
-            complex_match = complex_pattern.search(filename)
-            if simple_match:
-                return (0, int(simple_match.group(1)))
-            elif complex_match:
-                run_id = int(complex_match.group(4))
-                iter_num = int(complex_match.group(1))
-                env_num = int(complex_match.group(2))
-                step_num = int(complex_match.group(3))
-                return (1, run_id, iter_num, env_num, step_num)
-            else:
-                raise ValueError(f"Filename {filename} is in the wrong format")
-        return sorted(img_paths, key=get_sort_key)
 
 class VAEDataset(LightningDataModule):
     """
@@ -116,8 +80,9 @@ class VAEDataset(LightningDataModule):
 
         self.difficulty_sampler = None
         if self.train_dataset_name is not None:
-            self.train_dataset = MyDataset(self.train_data_dir, split='train', transform=transform)
-            self.val_dataset = MyDataset(self.train_data_dir, split='test', transform=transform)
+            (train_files, val_files) = self.split_images(self.train_data_dir, train_ratio=0.9)
+            self.train_dataset = MyDataset(train_files, transform=transform)
+            self.val_dataset = MyDataset(val_files, transform=transform)
             if self.use_difficulty_sampling:
                 self.difficulty_sampler = ImgDifficultySampler(len(self.train_dataset), self.train_batch_size)
         else:
@@ -125,7 +90,8 @@ class VAEDataset(LightningDataModule):
         
         # If a separate test dataset is provided, use it; otherwise, use validation set
         if self.test_dataset_name is not None:
-            self.test_dataset = MyDataset(self.test_data_dir, split='test', transform=transform, train_ratio=0)
+            (_, test_files) = self.split_images(self.test_data_dir, train_ratio=0)
+            self.test_dataset = MyDataset(test_files, transform=transform)
         else:
             self.test_dataset = self.val_dataset
         
@@ -178,3 +144,74 @@ class VAEDataset(LightningDataModule):
             self.difficulty_sampler.update_img_difficulties(self.sampled_img_names, self.sampled_img_losses)
             self.sampled_img_names = []
             self.sampled_img_losses = []
+            
+    def split_images(self, data_dir, train_ratio):
+        print(f"\nLoading images from {data_dir}")
+        # If we have complex files names (with run-id, iter, env), we'll randomly select runs for train and test. Otherwise we'll just split the files.
+        simple_pattern = re.compile(r'^(\d+)\.png$')
+        complex_pattern = re.compile(r'iter(\d+).*?env(\d+).*?step(\d+).*?run-id(\d+)')
+        # First collect the set of all run-ids
+        image_files = [f for f in os.listdir(data_dir) if f.endswith('.png')]
+        run_ids = set()
+        for f in image_files:
+            complex_match = complex_pattern.search(f)
+            if complex_match:
+                run_ids.add(int(complex_match.group(4)))
+        run_ids = list(run_ids)
+        random.shuffle(run_ids)
+        train_run_ids = run_ids[:int(train_ratio * len(run_ids))]
+        test_run_ids = run_ids[int(train_ratio * len(run_ids)):]
+        print(f"Found {len(run_ids)} runs of data generation, splitting into {len(train_run_ids)} training run-ids and {len(test_run_ids)} test run-ids")
+
+        simple_filepaths = []
+        train_complex_filepaths = []
+        test_complex_filepaths = []
+        for f in image_files:
+            simple_match = simple_pattern.match(f)
+            complex_match = complex_pattern.search(f)
+            if simple_match:
+                simple_filepaths.append(os.path.join(data_dir, f))
+            elif complex_match:
+                run_id = int(complex_match.group(4))
+                if run_id in train_run_ids:
+                    train_complex_filepaths.append(os.path.join(data_dir, f))
+                else:
+                    test_complex_filepaths.append(os.path.join(data_dir, f))
+        random.shuffle(simple_filepaths)
+        train_simple_filepaths = simple_filepaths[:int(train_ratio * len(simple_filepaths))]
+        test_simple_filepaths = simple_filepaths[int(train_ratio * len(simple_filepaths)):]
+        train_all = train_simple_filepaths + train_complex_filepaths
+        test_all = test_simple_filepaths + test_complex_filepaths
+        test_all = self.sort_images(test_all) # Keep test images in order so we can make gifs and such
+        print(f"Loaded {len(train_all)} training images and {len(test_all)} test images")
+        return (train_all, test_all)
+    
+    def sort_images(self, img_paths):
+        """
+        Sort image files in a directory:
+        - Simple filenames (e.g., '5.png') are sorted by their integer value
+        - Complex filenames sorted by run-id, then iter, then env, then step
+        Theoretically you should never have both simple and complex filenames in the same directory but we handle that just in case.
+        """
+        # Regex pattern for simple filenames (e.g., "5.png")
+        simple_pattern = re.compile(r'^(\d+)\.png$')
+
+        # Regex pattern for complex filenames with named groups
+        complex_pattern = re.compile(r'iter(\d+).*?env(\d+).*?step(\d+).*?run-id(\d+)')
+
+        def get_sort_key(filepath):
+            filename = os.path.basename(filepath)
+            simple_match = simple_pattern.match(filename)
+            complex_match = complex_pattern.search(filename)
+            if simple_match:
+                return (0, int(simple_match.group(1)))
+            elif complex_match:
+                run_id = int(complex_match.group(4))
+                iter_num = int(complex_match.group(1))
+                env_num = int(complex_match.group(2))
+                step_num = int(complex_match.group(3))
+                return (1, run_id, iter_num, env_num, step_num)
+            else:
+                raise ValueError(f"Filename {filename} is in the wrong format")
+        return sorted(img_paths, key=get_sort_key)
+
