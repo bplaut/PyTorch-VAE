@@ -98,7 +98,7 @@ def make_tex(image_dir_path, output_filename="presentation.tex"):
         
         # Create a frame for this environment
         frame_title = f"Environment {env_idx + 1}"
-        max_frames = 500
+        max_frames = 300
         last_frame = min(len(file_list), max_frames) - 1 # -1 because animategraphics is inclusive
         frame_prefix = os.path.join(os.path.basename(image_dir_path), 'temp_copies', env_subdir)
         frame = f"""
