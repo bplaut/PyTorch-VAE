@@ -3,7 +3,7 @@
 #SBATCH --time=7-00:00:00
 #SBATCH --gpus=1
 #SBATCH --qos=high
-#SBATCH --mem=10gb
+#SBATCH --mem=15gb
 
 cd /nas/ucb/bplaut/PyTorch-VAE
 eval "$(/nas/ucb/bplaut/miniconda3/bin/conda shell.bash hook)"
