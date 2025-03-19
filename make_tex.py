@@ -72,7 +72,7 @@ def make_tex(image_dir_path, output_filename="presentation.tex"):
 %gets rid of footer
 %will override 'frame number' instruction above
 %comment out to revert to previous/default definitions
-\newcommand\fps{14}
+\newcommand\fps{12}
 
 \begin{document}
 """
