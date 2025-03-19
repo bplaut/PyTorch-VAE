@@ -23,7 +23,7 @@ parser.add_argument('-t', '--test_dataset', type=str, help='Dataset to use for t
 parser.add_argument('-d', '--latent_dim', type=int, help='Latent dimension of the model. If provided, it will override the value in the config file')
 parser.add_argument('-p', '--trained_model_path', type=str, help='Path to the checkpoint to use for testing. If provided, training will be skipped')
 parser.add_argument('-k', '--kl_penalty', type=float, help='KL penalty to use for training. If provided, it will override the value in the config file')
-parser.add_argument('-o', '--test_output_dir', type=str, help='Where to save the output images from test', default='test_outputs')
+parser.add_argument('-o', '--test_output_dir', type=str, help='Where to save the output images from test', default='outputs')
 parser.add_argument('-e', '--extra_image_outputs', action='store_true', help='Output samples and individual reconstructions in addition to side-by-side comparisons', default=False)
 parser.add_argument('-a', '--dont_annotate_loss', action='store_true', help='Annotate the output images with the loss', default=False)
 parser.add_argument('--histogram_only', action='store_true', help='Only save histograms in testing', default=False)
