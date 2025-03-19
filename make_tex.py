@@ -4,27 +4,23 @@ import sys
 import math
 import shutil
 from collections import defaultdict
+import subprocess
 
-def make_tex(directory_path, output_filename="presentation.tex"):
+def make_tex(image_dir_path, output_filename="presentation.tex"):
     """
     Generate a LaTeX beamer presentation with animated frames from a directory of images.
     Each environment (unique iter, env, run-id combination) gets its own GIF.
-    
-    Args:
-        directory_path (str): Path to the directory containing the annotated images
-        output_filename (str): Name of the output LaTeX file
     """
-    print(f"Generating LaTeX file from images in {directory_path}")
+    print(f"Generating LaTeX file from images in {image_dir_path}")
     # Put the output file in the parent directory of the images
-    if directory_path.endswith("/"):
-        directory_path = directory_path[:-1]
-    output_path = os.path.join(os.path.dirname(directory_path), output_filename)
+    if image_dir_path.endswith("/"):
+        image_dir_path = image_dir_path[:-1]
     
     # Get all PNG files in the directory
-    image_files = [f for f in os.listdir(directory_path) if f.endswith(".png")]
+    image_files = [f for f in os.listdir(image_dir_path) if f.endswith(".png")]
     
     if len(image_files) == 0:
-        print(f"No images found in {directory_path}")
+        print(f"No images found in {image_dir_path}")
         return
     
     # Single regex to extract all components at once
@@ -52,7 +48,7 @@ def make_tex(directory_path, output_filename="presentation.tex"):
         env_groups[env_key].append((filename, step_num))
     
     if not env_groups:
-        print(f"No valid environment files found in {directory_path}")
+        print(f"No valid environment files found in {image_dir_path}")
         return
     
     # Sort the files in each environment group by step number
@@ -60,7 +56,7 @@ def make_tex(directory_path, output_filename="presentation.tex"):
         env_groups[env_key].sort(key=lambda x: x[1])
     
     # Get the directory name for use in the LaTeX file
-    dir_name = os.path.basename(os.path.normpath(directory_path))
+    dir_name = os.path.basename(os.path.normpath(image_dir_path))
     
     # Create the LaTeX preamble
     preamble = r"""\documentclass[pdf]{beamer}
@@ -82,7 +78,7 @@ def make_tex(directory_path, output_filename="presentation.tex"):
 """
     
     # Create a temporary directory for temporary copies (because animategraphics wants files named something like 0.png, 1.png, etc.)
-    temp_dir = os.path.join(directory_path, "temp_copies")
+    temp_dir = os.path.join(image_dir_path, "temp_copies")
     os.makedirs(temp_dir, exist_ok=True)
     
     # Create the document body with frames
@@ -96,7 +92,7 @@ def make_tex(directory_path, output_filename="presentation.tex"):
         os.makedirs(env_dir_path, exist_ok=True)
         
         for i, (filename, _) in enumerate(file_list):
-            source_path = os.path.join(directory_path, filename)
+            source_path = os.path.join(image_dir_path, filename)
             copy_path = os.path.join(env_dir_path, f"{i}.png")
             shutil.copy2(source_path, copy_path)
         
@@ -104,7 +100,7 @@ def make_tex(directory_path, output_filename="presentation.tex"):
         frame_title = f"Environment {env_idx + 1}"
         max_frames = 500
         last_frame = min(len(file_list), max_frames) - 1 # -1 because animategraphics is inclusive
-        frame_prefix = os.path.join(os.path.basename(directory_path), 'temp_copies', env_subdir)
+        frame_prefix = os.path.join(os.path.basename(image_dir_path), 'temp_copies', env_subdir)
         frame = f"""
 \\begin{{frame}}
 \\frametitle{{{frame_title}}}
@@ -123,14 +119,26 @@ def make_tex(directory_path, output_filename="presentation.tex"):
     full_document = preamble + body + closing
     
     # Write to output file
+    output_dir = os.path.dirname(image_dir_path)
+    output_path = os.path.join(output_dir, output_filename)
     with open(output_path, "w") as f:
         f.write(full_document)
     
     print(f"Generated {output_path} with {len(env_groups)} environments. Left temporary copies in {temp_dir}")
+    # Compile the tex file. For some reason we need to do it twice to make the gifs work
+    print("First tex compilation...")
+    subprocess.run(f"cd {output_dir}; pdflatex {output_filename}", shell=True, stdout=subprocess.DEVNULL)
+    print("Second tex compilation...")
+    subprocess.run(f"cd {output_dir}; pdflatex {output_filename}", shell=True, stdout=subprocess.DEVNULL)
+    # Remove temporary copies
+    print(f"Removing temporary copies in {temp_dir}")
+    shutil.rmtree(temp_dir)
+
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python make_tex.py <directory_path>")
+    if len(sys.argv) < 3:
+        print("Usage: python make_tex.py <image_dir_path> <output_filename>")
         sys.exit(1)
-    directory_path = sys.argv[1]
-    make_tex(directory_path)
+    image_dir_path = sys.argv[1]
+    output_filename = sys.argv[2]
+    make_tex(image_dir_path, output_filename)
