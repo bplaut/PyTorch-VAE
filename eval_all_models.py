@@ -34,7 +34,7 @@ def parse_args():
     parser.add_argument('-n', '--checkpoint_name', type=str, default='best.ckpt',
                         help='Checkpoint filename to use (default: best.ckpt)')
     parser.add_argument('-e', '--extra_image_outputs', action='store_true', help='Output samples and individual reconstructions in addition to side-by-side comparisons', default=False)
-    parser.add_argument('-o', '--output_dir', type=str, default='outputs', help='Directory to save test outputs')
+    parser.add_argument('-o', '--output_dir', type=str, default='full_test_output', help='Directory to save test outputs')
     parser.add_argument('-u', '--cleanup', action='store_true', help='Delete the output directory after running tests', default=False)
     parser.add_argument('-a', '--dont_annotate_loss', action='store_true', help='Annotate the output images with the loss', default=False)
     parser.add_argument('-g', '--histogram_only', action='store_true', help='Only save histogram images in test', default=False)
@@ -159,7 +159,7 @@ def main():
               f"trained on {result['train_dataset']}, " +
               f"tested on {result['test_dataset']}: {status}")
     print("Now copying the outputs: gif pdfs and histogram pngs")
-    final_output_dir = "tmp_output"
+    final_output_dir = "output"
     os.makedirs(final_output_dir, exist_ok=True)
     os.system(f"rm {final_output_dir}/*")
     os.system(f"rm output.zip")
