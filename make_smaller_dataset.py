@@ -19,7 +19,6 @@ def copy_random_environments(input_dir, output_dir, num_envs, seed=None):
     # Group files by environment (iter, env, run-id)
     env_groups = defaultdict(list)
     print("Grouping files by environment...")
-    processed_cnt = 0
     for filename in png_files:
         # Use the regex to extract environment components
         match = env_pattern.search(filename)
@@ -37,9 +36,6 @@ def copy_random_environments(input_dir, output_dir, num_envs, seed=None):
         
         # Add the filename to the appropriate environment group
         env_groups[env_key].append(filename)
-        processed_cnt += 1
-        if processed_cnt % 100000 == 0:
-            print(f"Processed {processed_cnt} files")
     
     # Select n random environments
     if num_envs >= len(env_groups):
