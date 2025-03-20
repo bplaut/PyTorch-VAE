@@ -105,3 +105,5 @@ if args.test_dataset is not None:
 # Cleanup
 if torch.distributed.is_initialized():
     torch.distributed.destroy_process_group()
+
+print(f"----\nSuccessfully completed {exp_name}\n----")
