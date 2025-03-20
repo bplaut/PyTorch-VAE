@@ -81,9 +81,9 @@ def make_tex(image_dir_path, output_filename="presentation.tex"):
     temp_dir = os.path.join(image_dir_path, "temp_copies")
     os.makedirs(temp_dir, exist_ok=True)
     
-    # Create the document body with frames
+    # Create the document body with frames in sorted order
     body = ""
-    for env_idx, (env_key, file_list) in enumerate(env_groups.items()):
+    for env_idx, (env_key, file_list) in enumerate(sorted(env_groups.items())):
         iter_num, env_num, run_id = env_key
         
         # Create a subdirectory for this environment
