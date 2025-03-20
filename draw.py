@@ -136,20 +136,19 @@ def create_annotated_image(comparison_img, loss, norm_loss):
 
 def get_color_from_score(percentile):
     """
-    Map a percentile (0-1) to a color: blue (0) -> purple (0.5) -> red (1)
+    Map a percentile (0-1) to a color: dark green (0) -> darker yellow (0.5) -> red (1)
     """
     if percentile < 0.5:
-        # Blue to Purple (0 to 0.5)
+        # Dark Green to Darker Yellow (0 to 0.5)
         normalized = percentile * 2  # Scale 0-0.5 to 0-1
-        r = int(128 * normalized)
-        g = 0
-        b = int(255 - 127 * normalized)
+        r = int(200 * normalized)
+        g = 150 + int(50 * normalized)  # Start at 150 (darker green)
+        b = 0
     else:
-        # Purple to Red (0.5 to 1)
+        # Darker Yellow to Red (0.5 to 1)
         normalized = (percentile - 0.5) * 2  # Scale 0.5-1 to 0-1
-        r = int(128 + 127 * normalized)
-        g = 0
-        b = int(128 - 128 * normalized)
+        r = 200 + int(55 * normalized)
+        g = 200 - int(200 * normalized)
+        b = 0
 
     return (r, g, b)
-
