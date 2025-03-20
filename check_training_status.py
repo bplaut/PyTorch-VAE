@@ -2,7 +2,7 @@ import os
 import argparse
 from collections import defaultdict
 
-def find_versions_with_most_epochs(root_dir):
+def find_all_version_epochs(root_dir):
     # Dictionary to track models, versions and file counts
     model_data = defaultdict(lambda: defaultdict(int))
     
@@ -26,17 +26,10 @@ def find_versions_with_most_epochs(root_dir):
                     if file_count > model_data.get(model_name, {}).get(version_name, 0):
                         model_data[model_name][version_name] = file_count
     
-    # Find the version with most files for each model
-    results = {}
-    for model, versions in model_data.items():
-        if versions:  # Only process if we have data
-            max_version = max(versions.items(), key=lambda x: x[1])
-            results[model] = max_version
-    
-    return results
+    return model_data
 
 def main():
-    parser = argparse.ArgumentParser(description='Find which version of each model has completed the most epochs')
+    parser = argparse.ArgumentParser(description='Find epochs completed for all versions of each model')
     parser.add_argument('directory', help='Root directory to search')
     args = parser.parse_args()
     
@@ -44,11 +37,13 @@ def main():
         print(f"Error: {args.directory} is not a valid directory")
         return
     
-    results = find_versions_with_most_epochs(args.directory)
+    model_data = find_all_version_epochs(args.directory)
     
     print("Results:")
-    for model, (version, count) in sorted(results.items()):
-        print(f"{model}: {version} completed {count} epochs")
+    for model, versions in sorted(model_data.items()):
+        print(f"{model}:")
+        for version, count in sorted(versions.items()):
+            print(f"  {version}: {count} epochs")
 
 if __name__ == "__main__":
     main()
