@@ -142,8 +142,8 @@ class VAEDataset(LightningDataModule):
     def on_epoch_end(self):
         if self.difficulty_sampler is not None:
             self.difficulty_sampler.update_img_difficulties(self.sampled_img_names, self.sampled_img_losses)
-            self.sampled_img_names = []
-            self.sampled_img_losses = []
+        self.sampled_img_names = []
+        self.sampled_img_losses = []
             
     def split_images(self, data_dir, train_ratio):
         print(f"\nLoading images from {data_dir}")
