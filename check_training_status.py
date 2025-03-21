@@ -43,7 +43,7 @@ def main():
     for model, versions in sorted(model_data.items()):
         print(f"{model}:")
         for version, count in sorted(versions.items()):
-            print(f"  {version}: {count} epochs")
+            print(f"   {count} epochs ({version})")
 
 if __name__ == "__main__":
     main()
