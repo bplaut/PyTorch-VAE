@@ -184,6 +184,7 @@ class MSSIM(nn.Module):
     def __init__(self,
                  in_channels: int = 3,
                  window_size: int=11,
+                 normalize: bool = True,
                  size_average:bool = True) -> None:
         """
         Computes the differentiable MS-SSIM loss
@@ -199,6 +200,7 @@ class MSSIM(nn.Module):
         self.in_channels = in_channels
         self.window_size = window_size
         self.size_average = size_average
+        self.normalize = normalize
 
     def gaussian_window(self, window_size:int, sigma: float) -> Tensor:
         kernel = torch.tensor([exp((x - window_size // 2)**2/(2 * sigma ** 2))
@@ -268,10 +270,10 @@ class MSSIM(nn.Module):
         mssim = torch.stack(mssim)
         mcs = torch.stack(mcs)
 
-        # # Normalize (to avoid NaNs during training unstable models, not compliant with original definition)
-        # if normalize:
-        #     mssim = (mssim + 1) / 2
-        #     mcs = (mcs + 1) / 2
+        # Normalize (to avoid NaNs during training unstable models, not compliant with original definition)
+        if self.normalize:
+            mssim = (mssim + 1) / 2
+            mcs = (mcs + 1) / 2
 
         pow1 = mcs ** weights
         pow2 = mssim ** weights
