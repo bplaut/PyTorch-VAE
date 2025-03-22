@@ -142,12 +142,12 @@ class VAEXperiment(pl.LightningModule):
         # If we only have reconstruction loss, no need to print stuff separately
         if not math.isclose(metrics['Reconstruction_Loss'], metrics['loss']):
             print(f"Training recon loss: {metrics['Reconstruction_Loss']:.5f}")
-        if not math.isclose(metrics['feature_loss'], 0):
+        if 'feature_loss' in metrics and not math.isclose(metrics['feature_loss'], 0):
             print(f"Training feature loss: {metrics['feature_loss']:.5f}")
         print(f"Validation total loss: {metrics['val_loss']:.5f}")
         if not math.isclose(metrics['val_Reconstruction_Loss'], metrics['val_loss']):
             print(f"Validation recon loss: {metrics['val_Reconstruction_Loss']:.5f}")
-        if not math.isclose(metrics['val_feature_loss'], 0):
+        if 'val_feature_loss' in metrics and not math.isclose(metrics['val_feature_loss'], 0):
             print(f"Validation feature loss: {metrics['val_feature_loss']:.5f}")
         print(f"Current LR: {self.trainer.lr_schedulers[0]['scheduler'].optimizer.param_groups[0]['lr']:.3g}")
 
