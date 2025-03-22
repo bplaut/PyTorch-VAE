@@ -4,7 +4,7 @@ from torch import nn
 from torch.nn import functional as F
 from torchvision.models import vgg19_bn
 from .types_ import *
-from mssim_vae import MSSIM
+from .mssim_vae import MSSIM
 
 class Autoencoder(BaseVAE):
     """
