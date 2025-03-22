@@ -4,6 +4,7 @@ from torch import nn
 from torch.nn import functional as F
 from torchvision.models import vgg19_bn
 from .types_ import *
+from mssim_vae import MSSIM
 
 class Autoencoder(BaseVAE):
     """
@@ -19,6 +20,7 @@ class Autoencoder(BaseVAE):
                  use_vgg: bool = False,
                  center_focus_sigma: float = None,  # If provided, will use center-weighted loss
                  use_skip_connections: bool = False,
+                 use_mssim_loss: bool = False,
                  **kwargs) -> None:
         super(Autoencoder, self).__init__()
 
@@ -27,6 +29,7 @@ class Autoencoder(BaseVAE):
         self.center_focus_sigma = center_focus_sigma
         self.center_weight_mask = None
         self.use_skip_connections = use_skip_connections
+        self.mssim = MSSIM(in_channels) if use_mssim_loss else None
 
         modules = []
         if hidden_dims is None:
@@ -260,6 +263,8 @@ class Autoencoder(BaseVAE):
                 self.center_weight_mask = self.create_center_weight_mask(height, width, input.device)
                 
             recons_loss = self.weighted_mse_loss(recons, input, self.center_weight_mask)
+        elif self.mssim is not None: # MSSIM loss
+            recons_loss = self.mssim(recons, input)
         else:
             # Standard MSE loss
             recons_loss = F.mse_loss(recons, input)
