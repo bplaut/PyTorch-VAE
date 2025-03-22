@@ -51,7 +51,8 @@ def save_loss_histogram(params, test_data):
 
     # Create histogram
     plt.figure(figsize=(10, 6))
-    plt.hist(total_losses, bins=40, alpha=0.8, color='blue')
+    num_bins = len(total_losses) // 100
+    plt.hist(total_losses, bins=num_bins, alpha=0.8, color='blue')
     plt.title('Histogram of loss across time steps')
     plt.xlabel('Loss (x1000)')
     plt.ylabel('Frequency')
