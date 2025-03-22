@@ -11,7 +11,6 @@ import torchvision.utils as vutils
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 import draw
-import psutil
 
 
 class VAEXperiment(pl.LightningModule):
@@ -32,7 +31,6 @@ class VAEXperiment(pl.LightningModule):
         except:
             pass            
         self.reset_extreme_image_tracking()
-        self.process = process = psutil.Process(os.getpid()) # for memory tracking
 
     def forward(self, input: Tensor, **kwargs) -> Tensor:
         return self.model(input, **kwargs)
@@ -152,7 +150,6 @@ class VAEXperiment(pl.LightningModule):
         if not math.isclose(metrics['val_feature_loss'], 0):
             print(f"Validation feature loss: {metrics['val_feature_loss']:.5f}")
         print(f"Current LR: {self.trainer.lr_schedulers[0]['scheduler'].optimizer.param_groups[0]['lr']:.3g}")
-        print(f"Memory used: {self.process.memory_info().rss / 1024**2:.2f} MB")
 
         print("-" * 50 + "\n")
 
