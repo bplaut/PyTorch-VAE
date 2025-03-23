@@ -149,7 +149,6 @@ class VAEXperiment(pl.LightningModule):
             print(f"Validation recon loss: {metrics['val_Reconstruction_Loss']:.5f}")
         if 'val_feature_loss' in metrics and not math.isclose(metrics['val_feature_loss'], 0):
             print(f"Validation feature loss: {metrics['val_feature_loss']:.5f}")
-        print(f"Current LR: {self.trainer.lr_schedulers[0]['scheduler'].optimizer.param_groups[0]['lr']:.3g}")
 
         print("-" * 50 + "\n")
 
