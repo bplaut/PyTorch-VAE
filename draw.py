@@ -51,12 +51,14 @@ def save_loss_histogram(params, test_data):
 
     # Create histogram
     plt.figure(figsize=(10, 6))
-    num_bins = len(total_losses) // 100
+    num_bins = int(len(total_losses) ** .44) # tweaked to get reasonable smoothness
     plt.hist(total_losses, bins=num_bins, alpha=0.8, color='blue')
     plt.title('Histogram of loss across time steps')
     plt.xlabel('Loss (x1000)')
     plt.ylabel('Frequency')
     plt.grid(True, alpha=0.3)
+    max_loss_in_hist = min(5, max(total_losses)) # we don't need to see the super long tail
+    plt.xlim(0, max_loss_in_hist)
 
     # Add vertical lines for percentiles
     colors = ['green', 'orange', 'purple', 'red']
