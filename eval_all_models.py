@@ -19,6 +19,7 @@ config_map = {'VanillaVAE':'vae.yaml',
               'CenterVFocusedAE':'center_vfocused_ae.yaml',
               'CenterVVFocusedAE':'center_vvfocused_ae.yaml',
               'PatientVVBigAE':'patient_vvbig_ae.yaml',
+              'MSSIM_AE':'mssim_ae.yaml',
               'DifficultySamplerAE':'difficulty_sampler.yaml',
               'LinearDifficultySamplerAE':'difficulty_sampler.yaml',
               'MSSIMVAE':'mssim_vae.yaml'}
