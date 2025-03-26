@@ -84,7 +84,7 @@ class VAEDataset(LightningDataModule):
             self.train_dataset = MyDataset(train_files, transform=transform)
             self.val_dataset = MyDataset(val_files, transform=transform)
             if self.use_difficulty_sampling:
-                self.difficulty_sampler = ImgDifficultySampler(len(self.train_dataset), self.train_batch_size)
+                self.difficulty_sampler = ImgDifficultySampler(self.train_dataset, self.train_batch_size)
         else:
             self.train_dataset, self.val_dataset = None, None
         
